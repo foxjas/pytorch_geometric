@@ -11,3 +11,5 @@ alpha/
 
 !torch_geometric/data/
 !test/data/
+.swp
+.pyc
