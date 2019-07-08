@@ -8,7 +8,20 @@ from sklearn import preprocessing
 import argparse
 
 def ldp_features(g):
-    pass
+    ldp_stats = []
+    nodes = list(g.nodes) # ordering?
+    for u in nodes:
+        deg_u = g.degree[u]
+        neighbors = [g.degree[v] for v in g.neighbors(u)]
+        neigh_mean = np.mean(neighbors)
+        neigh_min = np.amin(neighbors)
+        neigh_max = np.max(neighbors)
+        neigh_std = np.std(neighbors)
+        ldp_stats.append((deg_u, neigh_min, neigh_max, neigh_mean, neigh_std))
+    print(ldp_stats[:10])
+    data = np.array(ldp_stats)
+    
+    # scale vector
 
 def save_out(m, o):
     with open(o, 'w') as f:
@@ -26,6 +39,7 @@ if __name__ == '__main__':
 
     g = networkx.read_edgelist(args.edgelist)
 
+    features = ldp_features(g)
     #X, Y = get_xy(g, args.walks_per, args.balance, args.alg)
     
     """
