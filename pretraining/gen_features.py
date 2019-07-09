@@ -8,20 +8,41 @@ from sklearn import preprocessing
 import argparse
 
 def ldp_features(g):
+    """
+    Generate feature matrix according to following attributes, per node:
+        - Node degree
+        - Min, max, mean, and standard deviation of immediate neighborhood
+
+    See https://github.com/Chen-Cai-OSU/LDP
+    """
+
+    def normalize(features):
+        """ 
+        Normalizes each feature by z-score transform 
+        Other transformations possible
+        """
+        feat_std = np.std(features, axis=0) 
+        feat_mean = np.mean(features, axis=0)
+        features = (features-feat_mean)/feat_std
+        return features
+
     ldp_stats = []
     nodes = list(g.nodes) # ordering?
     for u in nodes:
         deg_u = g.degree[u]
         neighbors = [g.degree[v] for v in g.neighbors(u)]
-        neigh_mean = np.mean(neighbors)
-        neigh_min = np.amin(neighbors)
-        neigh_max = np.max(neighbors)
-        neigh_std = np.std(neighbors)
+        if deg_u:
+            neigh_mean = np.mean(neighbors)
+            neigh_min = np.amin(neighbors)
+            neigh_max = np.max(neighbors)
+            neigh_std = np.std(neighbors)
+        else:
+            neigh_mean, neigh_min, neigh_max, neigh_std = 0,0,0,0
         ldp_stats.append((deg_u, neigh_min, neigh_max, neigh_mean, neigh_std))
-    print(ldp_stats[:10])
-    data = np.array(ldp_stats)
-    
-    # scale vector
+    ldp_stats = np.array(ldp_stats)
+    data = normalize(ldp_stats)
+
+    return data 
 
 def save_out(m, o):
     with open(o, 'w') as f:
