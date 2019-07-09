@@ -3,9 +3,13 @@
 import networkx 
 import numpy as np
 
-from sklearn import preprocessing
-
 import argparse
+import os
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 def ldp_features(g):
     """
@@ -44,30 +48,30 @@ def ldp_features(g):
 
     return data 
 
-def save_out(m, o):
-    with open(o, 'w') as f:
-        for row in m:
-            f.write(','.join(map(lambda x: str(x), row)))
-            f.write('\n')
+
+def save_out(m, data_name, outdir):
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
+    outPath = os.path.join(outdir, "{}.dat".format(data_name))
+    with open(outPath, 'wb') as outf:
+        pickle.dump(m, outf)
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generates feature vectors for graphs')
 
     parser.add_argument('edgelist', help='Graph edgelist (0 indexed) to generate vectors from')
-    parser.add_argument('--save_features', default=False, help='If enabled save as ? files', action='store_true')
+    parser.add_argument('--save', dest='save_dir', default=None, help='If enabled, save features to directory as binary')
 
     args = parser.parse_args()
 
     g = networkx.read_edgelist(args.edgelist)
 
     features = ldp_features(g)
-    #X, Y = get_xy(g, args.walks_per, args.balance, args.alg)
+    if args.save_dir:
+        graph_parse = args.edgelist.split("/")[-1]
+        graph_name = graph_parse.split(".")[0].strip()
+        #print(graph_name)
+        save_out(features, graph_name, args.save_dir) 
     
-    """
-    if args.save_text:
-        save_out(X, '%s.walks' % args.out)
-        save_out(Y, '%s.pr' % args.out)
-    else:
-        np.save('%s_X' % args.out, X)
-        np.save('%s_Y' % args.out, Y)
-    """
