@@ -15,9 +15,19 @@ except ImportError:
 
 
 def read_planetoid_data(folder, prefix):
+    """
+    
+    """
     names = ['x', 'tx', 'allx', 'y', 'ty', 'ally', 'graph', 'test.index']
     items = [read_file(folder, prefix, name) for name in names]
     x, tx, allx, y, ty, ally, graph, test_index = items
+    print("x: {}".format(x.size()))
+    print("tx: {}".format(tx.size()))
+    print("allx: {}".format(allx.size()))
+    print("y: {}".format(y.size()))
+    print("ty: {}".format(ty.size()))
+    print("ally: {}".format(ally.size()))
+    print("test_index: {}".format(test_index.size()))
     train_index = torch.arange(y.size(0), dtype=torch.long)
     val_index = torch.arange(y.size(0), y.size(0) + 500, dtype=torch.long)
     sorted_test_index = test_index.sort()[0]
@@ -38,15 +48,18 @@ def read_planetoid_data(folder, prefix):
     x = torch.cat([allx, tx], dim=0)
     y = torch.cat([ally, ty], dim=0).max(dim=1)[1]
 
+    # maps test node ids to features & labels
     x[test_index] = x[sorted_test_index]
     y[test_index] = y[sorted_test_index]
 
+    print("x: {}".format(x.size()))
+    print("y: {}".format(y.size()))
     train_mask = sample_mask(train_index, num_nodes=y.size(0))
     val_mask = sample_mask(val_index, num_nodes=y.size(0))
     test_mask = sample_mask(test_index, num_nodes=y.size(0))
 
     edge_index = edge_index_from_dict(graph, num_nodes=y.size(0))
-
+    print("edge_index: {}".format(edge_index.size()))
     data = Data(x=x, edge_index=edge_index, y=y)
     data.train_mask = train_mask
     data.val_mask = val_mask

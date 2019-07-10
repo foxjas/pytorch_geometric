@@ -1,5 +1,7 @@
 import os.path as osp
-
+import sys
+sys.path = [osp.expanduser("~/pytorch_geometric")] + sys.path
+#print(sys.path)
 import torch
 import torch.nn.functional as F
 from torch_geometric.datasets import Planetoid
@@ -10,6 +12,8 @@ dataset = 'Cora'
 path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset)
 dataset = Planetoid(path, dataset, T.NormalizeFeatures())
 data = dataset[0]
+print("End of data loading; exiting")
+sys.exit()
 
 
 class Net(torch.nn.Module):
@@ -34,8 +38,9 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
 
 
 def train():
-    model.train()
+    model.train() # sets mode
     optimizer.zero_grad()
+    # model() implicitly calls forward()
     F.nll_loss(model()[data.train_mask], data.y[data.train_mask]).backward()
     optimizer.step()
 
