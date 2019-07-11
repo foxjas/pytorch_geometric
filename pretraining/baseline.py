@@ -1,18 +1,14 @@
-import os.path as osp
-
+import os.path
+import sys
+sys.path = [os.path.expanduser("~/pytorch_geometric")] + sys.path
+import argparse
 import torch
 import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ReLU
-from torch_geometric.datasets import TUDataset
-from torch_geometric.data import DataLoader
+from torch_geometric.datasets import Airport 
 from torch_geometric.nn import GINConv, global_add_pool
 
-path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'MUTAG')
-dataset = TUDataset(path, name='MUTAG').shuffle()
-test_dataset = dataset[:len(dataset) // 10]
-train_dataset = dataset[len(dataset) // 10:]
-test_loader = DataLoader(test_dataset, batch_size=128)
-train_loader = DataLoader(train_dataset, batch_size=128)
+dataset = None
 
 
 class Net(torch.nn.Module):
@@ -63,9 +59,6 @@ class Net(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = Net().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 
 def train(epoch):
@@ -99,10 +92,31 @@ def test(loader):
     return correct / len(loader.dataset)
 
 
-for epoch in range(1, 101):
-    train_loss = train(epoch)
-    train_acc = test(train_loader)
-    test_acc = test(test_loader)
-    print('Epoch: {:03d}, Train Loss: {:.7f}, '
-          'Train Acc: {:.7f}, Test Acc: {:.7f}'.format(epoch, train_loss,
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Runs baseline experiments')
+
+    parser.add_argument('data_dir', help='Data directory')
+    parser.add_argument('data_name', help='Dataset name')
+    #parser.add_argument('--save', dest='save_dir', default=None, help='If enabled, save features to directory as binary')
+
+    args = parser.parse_args()
+    if not args.data_dir or not args.data_name:
+        sys.exit()
+
+    dataset = Airport(args.data_dir, args.data_name) 
+    data = dataset[0]
+
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #model = Net().to(device)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    # TODO: change
+    """
+    for epoch in range(1, 101):
+        train_loss = train(epoch)
+        train_acc = test(train_loader)
+        test_acc = test(test_loader)
+        print('Epoch: {:03d}, Train Loss: {:.7f}, '
+            'Train Acc: {:.7f}, Test Acc: {:.7f}'.format(epoch, train_loss,
                                                        train_acc, test_acc))
+    """

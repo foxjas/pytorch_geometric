@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
-
-import networkx 
 import numpy as np
+from graph import readEdgelist
+from utils import saveBinary
 
 import argparse
 import os
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 def ldp_features(g):
     """
@@ -49,15 +44,6 @@ def ldp_features(g):
     return data 
 
 
-def save_out(m, data_name, outdir):
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    outPath = os.path.join(outdir, "{}.dat".format(data_name))
-    with open(outPath, 'wb') as outf:
-        pickle.dump(m, outf)
-    
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generates feature vectors for graphs')
 
@@ -66,12 +52,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    g = networkx.read_edgelist(args.edgelist)
+    g = readEdgelist(args.edgelist)
 
     features = ldp_features(g)
     if args.save_dir:
         graph_parse = args.edgelist.split("/")[-1]
         graph_name = graph_parse.split(".")[0].strip()
         #print(graph_name)
-        save_out(features, graph_name, args.save_dir) 
+        saveBinary(features, graph_name, "feats", args.save_dir) 
     
