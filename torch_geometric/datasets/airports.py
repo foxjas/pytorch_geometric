@@ -4,6 +4,7 @@ from torch_geometric.data import InMemoryDataset
 from pretraining.gen_features import *
 from utils import * 
 from graph import * 
+from sklearn.model_selection import train_test_split 
 
 class Airport(InMemoryDataset):
     r"""The airport network datasets "europe", "brazil" and "usa" from the
@@ -73,14 +74,15 @@ def read_airport_data(folder, data_name):
     print("graph_tensor: {}".format(graph_tensor.size()))
 
     # create features tensor
-    feats_data = readBinary(feats_path)
-    feats_tensor = torch.Tensor(feats_data)
-    print("feats_tensor: {}".format(feats_tensor.size()))
+    feats_data = np.array(readBinary(feats_path))
+    #feats_tensor = torch.Tensor(feats_data)
+    print("feats_data: {}".format(feats_data.shape))
   
     # process labels 
-    labels_data = torch.Tensor(readBinary(labels_bin_path))
+    #labels_data = torch.Tensor(readBinary(labels_bin_path))
+    labels_data = np.array(readBinary(labels_bin_path))
     print("labels: {}".format(len(labels_data)))
-
+    train_validation_test_split(feats_data, labels_data, 0.6, 0.2)
 
 
     """
@@ -121,6 +123,27 @@ def prepare_airport_data(folder, data_name):
     # reorder labels according to new graph ordering
     node_labels = reorderLabels(old_new_node_ids, node_labels)
     saveBinary(node_labels, data_name, "labels", folder)
+
+
+def train_validation_test_split(X, y, train_ratio, valid_ratio):
+    """
+    Return indices corresponding to stratified train, validation, and
+    test splits.
+    """
+
+    rest_ratio = 1-train_ratio
+    indices = np.arange(len(y))
+    X_train, X_rest, y_train, y_rest, ind_train, ind_rest = \
+            train_test_split(X, y, indices, test_size=rest_ratio, random_state=24, stratify=y)
+
+    test_ratio = 1-(valid_ratio/rest_ratio) 
+    X_valid, X_test, y_valid, y_test, ind_valid, ind_test = \
+            train_test_split(X_rest, y_rest, ind_rest, test_size=test_ratio, random_state=24, stratify=y_rest)
+
+    ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test)
+    assert len(set(ind_reconstr)) == len(indices)
+    return ind_train, ind_valid, ind_test
+
 
 
 def sample_mask(index, num_nodes):
