@@ -2,14 +2,12 @@ import os.path
 import torch
 from torch_geometric.data import InMemoryDataset
 from pretraining.gen_features import *
-from utils import readBinary, saveBinary
-from graph import readEdgelist, graphToCOO 
+from utils import * 
+from graph import * 
 
 class Airport(InMemoryDataset):
     r"""The airport network datasets "europe", "brazil" and "usa" from the
-    `"Revisiting Semi-Supervised Learning with Graph Embeddings"
-    <https://arxiv.org/abs/1603.08861>`_ paper.
-    Nodes represent documents and edges represent citation links.
+    `"Learning Node Representations from Structural Identity" paper.
     Training, validation and test splits are given by binary masks.
 
     Args:
@@ -55,31 +53,35 @@ class Airport(InMemoryDataset):
 
 def read_airport_data(folder, data_name):
     """
-    Processes airport data 
-    - Node features: should be saved; could take while to process
-    - Graph index: read raw graph and process
-    - Train/val/test masks: generate on the fly?
-        - Need to read in labels
+    Reads and processes airport data 
+    Returns graph, feature, label tensors,
+        train/validation/test masks
     """
     graph_bin_path = os.path.join(folder, "{}_edges.dat".format(data_name))
-    if not os.path.isfile(graph_bin_path):
-        graph_path = os.path.join(folder, "{}.edgelist".format(data_name))
-        coo = graphToCOO(readEdgelist(graph_path)) # TODO: replace with single path argument
-        saveBinary(coo, data_name, "edges", folder)
-        
-    graph_data = torch.Tensor(readBinary(graph_bin_path)).t()
-    print("graph_data: {}".format(graph_data.size()))
-
-    # add check to see if these exist; if not, call utility to generate
     feats_path = os.path.join(folder, "{}_feats.dat".format(data_name))
-    feats_data = torch.Tensor(readBinary(feats_path))
-    print("feats_data: {}".format(feats_data.size()))
-   
-    
-    """
-    labels_path = os.path.join(folder, "{}_edges.dat".format(data_name))
-    labels_data = torch.Tensor(readBinary(graph_path))
-    """
+    labels_bin_path = os.path.join(folder, "{}_labels.dat".format(data_name))
+ 
+    data_ready = os.path.isfile(graph_bin_path) and \
+            os.path.isfile(feats_path) and \
+            os.path.isfile(labels_bin_path)
+    if not data_ready:
+        prepare_airport_data(folder, data_name)
+
+    # read graph and create graph tensor
+    coo = readBinary(graph_bin_path)
+    graph_tensor = torch.Tensor(coo).t()
+    print("graph_tensor: {}".format(graph_tensor.size()))
+
+    # create features tensor
+    feats_data = readBinary(feats_path)
+    feats_tensor = torch.Tensor(feats_data)
+    print("feats_tensor: {}".format(feats_tensor.size()))
+  
+    # process labels 
+    labels_data = torch.Tensor(readBinary(labels_bin_path))
+    print("labels: {}".format(len(labels_data)))
+
+
 
     """
     x = torch.cat([allx, tx], dim=0)
@@ -97,11 +99,28 @@ def read_airport_data(folder, data_name):
     data = None
     return data
 
-def readLabels(fPath):
-    """
 
+def prepare_airport_data(folder, data_name):
     """
-    pass
+    Read and process raw files, and save to binary:
+        - COO edge list
+        - Generated features
+        - Labels
+    """
+    graph_path = os.path.join(folder, "{}.edgelist".format(data_name))
+    graph = readEdgelist(graph_path) # singleton case?
+    graph, old_new_node_ids = relabelGraph(graph) 
+    coo = graphToCOO(graph) 
+    saveBinary(coo, data_name, "edges", folder) # TODO: replace with single path argument
+
+    feats_data = ldp_features(graph)
+    saveBinary(feats_data, data_name, "feats", folder)
+
+    labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))
+    node_labels = readLabels(labels_path)
+    # reorder labels according to new graph ordering
+    node_labels = reorderLabels(old_new_node_ids, node_labels)
+    saveBinary(node_labels, data_name, "labels", folder)
 
 
 def sample_mask(index, num_nodes):

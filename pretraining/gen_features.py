@@ -26,7 +26,7 @@ def ldp_features(g):
         return features
 
     ldp_stats = []
-    nodes = list(g.nodes) # ordering?
+    nodes = list(sorted(g.nodes))
     for u in nodes:
         deg_u = g.degree[u]
         neighbors = [g.degree[v] for v in g.neighbors(u)]

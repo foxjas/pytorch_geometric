@@ -17,7 +17,7 @@ def readEdgelist(fPath, singletons=False, skip=0):
     edges = []
     with open(fPath, 'r') as f:
         for _ in range(skip):
-            f.next()
+            f.readline()
 
         for l in f:
             src, dst = map(int, l.strip().split(" "))    
@@ -38,11 +38,11 @@ def readEdgelist(fPath, singletons=False, skip=0):
 def relabelGraph(G):
     """
     Relabels node IDs to [0,...,|V|-1] range. 
-    Returns list of pairs (old id,new id)
+    Returns relabeled graph, and list of pairs (old id,new id)
     """
     G_r = nx.convert_node_labels_to_integers(G, label_attribute='id_orig')
-    old_new_ids = [(data['id_orig'], new_id) for new_id, data in G.nodes.data()]
-    return old_new_ids
+    old_new_ids = [(data['id_orig'], new_id) for new_id, data in G_r.nodes.data()]
+    return G_r, old_new_ids
 
 
 def graphToCOO(G):
