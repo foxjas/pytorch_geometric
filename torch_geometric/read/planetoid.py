@@ -52,14 +52,14 @@ def read_planetoid_data(folder, prefix):
     x[test_index] = x[sorted_test_index]
     y[test_index] = y[sorted_test_index]
 
-    print("x: {}".format(x.size()))
-    print("y: {}".format(y.size()))
+    #print("x: {}".format(x.size()))
+    #print("y: {}".format(y.size()))
     train_mask = sample_mask(train_index, num_nodes=y.size(0))
     val_mask = sample_mask(val_index, num_nodes=y.size(0))
     test_mask = sample_mask(test_index, num_nodes=y.size(0))
 
     edge_index = edge_index_from_dict(graph, num_nodes=y.size(0))
-    print("edge_index: {}".format(edge_index.size()))
+    #print("edge_index: {}".format(edge_index.size()))
     data = Data(x=x, edge_index=edge_index, y=y)
     data.train_mask = train_mask
     data.val_mask = val_mask

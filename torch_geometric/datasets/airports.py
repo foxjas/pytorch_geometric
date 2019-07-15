@@ -1,6 +1,7 @@
 import os.path
 import torch
 from torch_geometric.data import InMemoryDataset
+from torch_geometric.data import Data
 from pretraining.gen_features import *
 from utils import * 
 from graph import * 
@@ -70,35 +71,30 @@ def read_airport_data(folder, data_name):
 
     # read graph and create graph tensor
     coo = readBinary(graph_bin_path)
-    graph_tensor = torch.Tensor(coo).t()
+    graph_tensor = torch.Tensor(coo).t().int()
     print("graph_tensor: {}".format(graph_tensor.size()))
 
     # create features tensor
     feats_data = np.array(readBinary(feats_path))
-    #feats_tensor = torch.Tensor(feats_data)
     print("feats_data: {}".format(feats_data.shape))
   
     # process labels 
-    #labels_data = torch.Tensor(readBinary(labels_bin_path))
-    labels_data = np.array(readBinary(labels_bin_path))
+    labels_data = np.array(readBinary(labels_bin_path), dtype=np.uint8)
     print("labels: {}".format(len(labels_data)))
-    train_validation_test_split(feats_data, labels_data, 0.6, 0.2)
-
-
-    """
-    x = torch.cat([allx, tx], dim=0)
-    y = torch.cat([ally, ty], dim=0).max(dim=1)[1]
-
+    train_index, val_index, test_index = train_validation_test_split(feats_data, labels_data, 0.6, 0.2)
+    
+    x = torch.Tensor(feats_data)
+    y = torch.Tensor(labels_data).long()
+    edge_index = graph_tensor 
     train_mask = sample_mask(train_index, num_nodes=y.size(0))
     val_mask = sample_mask(val_index, num_nodes=y.size(0))
     test_mask = sample_mask(test_index, num_nodes=y.size(0))
-
+        
     data = Data(x=x, edge_index=edge_index, y=y)
     data.train_mask = train_mask
     data.val_mask = val_mask
     data.test_mask = test_mask
-    """
-    data = None
+
     return data
 
 
@@ -130,6 +126,8 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
     Return indices corresponding to stratified train, validation, and
     test splits.
     """
+    
+    # TODO: print total class counts
 
     rest_ratio = 1-train_ratio
     indices = np.arange(len(y))
@@ -140,10 +138,19 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
     X_valid, X_test, y_valid, y_test, ind_valid, ind_test = \
             train_test_split(X_rest, y_rest, ind_rest, test_size=test_ratio, random_state=24, stratify=y_rest)
 
+    """
+    unique, counts = np.unique(y_valid, return_counts=True)
+    class_counts = dict(zip(unique, counts))
+    print("validation class counts: {}".format(class_counts))
+
+    unique, counts = np.unique(y_test, return_counts=True)
+    class_counts = dict(zip(unique, counts))
+    print("test class counts: {}".format(class_counts))
+    """
+
     ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test)
     assert len(set(ind_reconstr)) == len(indices)
     return ind_train, ind_valid, ind_test
-
 
 
 def sample_mask(index, num_nodes):
