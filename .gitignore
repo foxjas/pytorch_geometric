@@ -10,6 +10,7 @@ alpha/
 .coverage.*
 
 !torch_geometric/data/
+!data/airports/
 !test/data/
 .swp
 .pyc
