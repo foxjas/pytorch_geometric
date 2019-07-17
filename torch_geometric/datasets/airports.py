@@ -26,8 +26,9 @@ class Airport(InMemoryDataset):
             being saved to disk. (default: :obj:`None`)
     """
 
-    def __init__(self, root, name, transform=None, pre_transform=None):
+    def __init__(self, root, name, feature_type, transform=None, pre_transform=None):
         self.name = name
+        self.feature_type = feature_type
         super(Airport, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -44,8 +45,7 @@ class Airport(InMemoryDataset):
         pass
 
     def process(self):
-        data = read_airport_data(self.root, self.name)
-        #data = data if self.pre_transform is None else self.pre_transform(data)
+        data = read_airport_data(self.root, self.name, self.feature_type)
         data, slices = self.collate([data])
         torch.save((data, slices), self.processed_paths[0])
 
@@ -53,21 +53,21 @@ class Airport(InMemoryDataset):
         return '{}()'.format(self.name)
 
 
-def read_airport_data(folder, data_name):
+def read_airport_data(folder, data_name, feature_type):
     """
     Reads and processes airport data 
     Returns graph, feature, label tensors,
         train/validation/test masks
     """
     graph_bin_path = os.path.join(folder, "{}_edges.dat".format(data_name))
-    feats_path = os.path.join(folder, "{}_feats.dat".format(data_name))
     labels_bin_path = os.path.join(folder, "{}_labels.dat".format(data_name))
+    feats_path = os.path.join(folder, "{}-{}_feats.dat".format(data_name, feature_type))
  
     data_ready = os.path.isfile(graph_bin_path) and \
             os.path.isfile(feats_path) and \
             os.path.isfile(labels_bin_path)
     if not data_ready:
-        prepare_airport_data(folder, data_name)
+        prepare_airport_data(folder, data_name, feature_type)
 
     # read graph and create graph tensor
     coo = readBinary(graph_bin_path)
@@ -98,7 +98,7 @@ def read_airport_data(folder, data_name):
     return data
 
 
-def prepare_airport_data(folder, data_name):
+def prepare_airport_data(folder, data_name, feature_type):
     """
     Read and process raw files, and save to binary:
         - COO edge list
@@ -112,6 +112,7 @@ def prepare_airport_data(folder, data_name):
     saveBinary(coo, data_name, "edges", folder) # TODO: replace with single path argument
 
     feats_data = ldp_features(graph)
+    base_name = data_name + "-{}".format(feature_type)
     saveBinary(feats_data, data_name, "feats", folder)
 
     labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))

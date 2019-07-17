@@ -13,9 +13,9 @@ data = None
 model = None
 
 class MLP(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_dim):
         super(MLP, self).__init__()
-        dim_h = 128 # TODO: make parameter 
+        dim_h = hidden_dim 
         dim_in = int(dataset.num_features)
         dim_out = int(dataset.num_classes)
         self.linear1 = Linear(dim_in, dim_h)    
@@ -54,17 +54,18 @@ if __name__ == '__main__':
 
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
-    #parser.add_argument('--save', dest='save_dir', default=None, help='If enabled, save features to directory as binary')
+    parser.add_argument('feature_type', default="LDP", help='Type of features to use')
+    parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer')
 
     args = parser.parse_args()
     if not args.data_dir or not args.data_name:
         sys.exit()
 
-    dataset = Airport(args.data_dir, args.data_name) 
+    dataset = Airport(args.data_dir, args.data_name, args.feature_type) 
     data = dataset[0]
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model, data = MLP().to(device), data.to(device)
+    model, data = MLP(args.hidden_dim).to(device), data.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
 
     best_val_acc = test_acc = 0
