@@ -39,7 +39,18 @@ def ldp_features(g):
         else:
             neigh_mean, neigh_min, neigh_max, neigh_std = 0,0,0,0
         ldp_stats.append((deg_u, neigh_min, neigh_max, neigh_mean, neigh_std))
-    ldp_stats = np.array(ldp_stats)
+        #ldp_stats.append((deg_u))
+        #ldp_stats.append((neigh_std))
+        #ldp_stats.append((neigh_mean))
+        #ldp_stats.append((neigh_min))
+        #ldp_stats.append((neigh_max))
+        #ldp_stats.append((np.random.random_sample()))
+    ldp_stats = np.array(ldp_stats).reshape((len(ldp_stats),-1)) # reshape in case there's no column dimension
+    """
+    for i in range(ldp_stats.shape[1]):
+        feat_std = np.std(ldp_stats[:,i])
+        print("feat {} std: {}".format(i+1, feat_std))
+    """
     data = normalize(ldp_stats)
 
     return data 

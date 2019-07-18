@@ -14,8 +14,7 @@ class Airport(InMemoryDataset):
 
     Args:
         root (string): Root directory where the dataset should be saved.
-        name of the dataset (:obj:`"Cora"`,
-            :obj:`"CiteSeer"`, :obj:`"PubMed"`).
+        name of the dataset 
         transform (callable, optional): A function/transform that takes in an
             :obj:`torch_geometric.data.Data` object and returns a transformed
             version. The data object will be transformed before every access.
@@ -38,7 +37,7 @@ class Airport(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        processed_name = "{}_data.pt".format(self.name)
+        processed_name = "{}_{}_data.pt".format(self.name, self.feature_type)
         return processed_name
 
     def download(self):
@@ -113,7 +112,7 @@ def prepare_airport_data(folder, data_name, feature_type):
 
     feats_data = ldp_features(graph)
     base_name = data_name + "-{}".format(feature_type)
-    saveBinary(feats_data, data_name, "feats", folder)
+    saveBinary(feats_data, base_name, "feats", folder)
 
     labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))
     node_labels = readLabels(labels_path)
@@ -126,18 +125,23 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
     """
     Return indices corresponding to stratified train, validation, and
     test splits.
+    Note: no random seed is set, so splits may differ on different calls
+        to this function for the same data.
     """
     
     # TODO: print total class counts
+    unique, counts = np.unique(y, return_counts=True)
+    class_counts = dict(zip(unique, counts))
+    print("total class counts: {}".format(class_counts))
 
     rest_ratio = 1-train_ratio
     indices = np.arange(len(y))
     X_train, X_rest, y_train, y_rest, ind_train, ind_rest = \
-            train_test_split(X, y, indices, test_size=rest_ratio, random_state=24, stratify=y)
+            train_test_split(X, y, indices, test_size=rest_ratio, stratify=y)
 
     test_ratio = 1-(valid_ratio/rest_ratio) 
     X_valid, X_test, y_valid, y_test, ind_valid, ind_test = \
-            train_test_split(X_rest, y_rest, ind_rest, test_size=test_ratio, random_state=24, stratify=y_rest)
+            train_test_split(X_rest, y_rest, ind_rest, test_size=test_ratio, stratify=y_rest)
 
     """
     unique, counts = np.unique(y_valid, return_counts=True)
@@ -155,6 +159,9 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
 
 
 def sample_mask(index, num_nodes):
+    """
+    Converts list of indices into boolean mask (over num_nodes)
+    """
     mask = torch.zeros((num_nodes, ), dtype=torch.uint8)
     mask[index] = 1
     return mask
