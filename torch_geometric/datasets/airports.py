@@ -84,7 +84,7 @@ def read_airport_data(folder, data_name, feature_type):
     
     x = torch.Tensor(feats_data)
     y = torch.Tensor(labels_data).long()
-    edge_index = graph_tensor 
+    edge_index = graph_tensor.long() 
     train_mask = sample_mask(train_index, num_nodes=y.size(0))
     val_mask = sample_mask(val_index, num_nodes=y.size(0))
     test_mask = sample_mask(test_index, num_nodes=y.size(0))
@@ -110,7 +110,10 @@ def prepare_airport_data(folder, data_name, feature_type):
     coo = graphToCOO(graph) 
     saveBinary(coo, data_name, "edges", folder) # TODO: replace with single path argument
 
-    feats_data = ldp_features(graph)
+    if feature_type == "LDP":
+       feats_data = ldp_features(graph)
+    elif feature_type == "degree":
+       feats_data = degreeOnlyFeatures(graph) 
     base_name = data_name + "-{}".format(feature_type)
     saveBinary(feats_data, base_name, "feats", folder)
 

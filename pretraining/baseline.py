@@ -11,7 +11,6 @@ import numpy as np
 
 dataset = None
 data = None
-model = None
 
 
 class MLP2(torch.nn.Module):
@@ -50,8 +49,63 @@ class MLP3(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
+class GIN(torch.nn.Module):
+    """ 
+    Adapted from ../examples/mutag_gin.py 
+    """
 
-def train():
+    def __init__(self, hidden_dim):
+        super(GIN, self).__init__()
+
+        num_features = dataset.num_features
+        dim = hidden_dim
+
+        nn1 = Sequential(Linear(num_features, dim), ReLU(), Linear(dim, dim))
+        self.conv1 = GINConv(nn1)
+        self.bn1 = torch.nn.BatchNorm1d(dim)
+
+        nn2 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        self.conv2 = GINConv(nn2)
+        self.bn2 = torch.nn.BatchNorm1d(dim)
+
+        nn3 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        self.conv3 = GINConv(nn3)
+        self.bn3 = torch.nn.BatchNorm1d(dim)
+
+        """
+        nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        self.conv4 = GINConv(nn4)
+        self.bn4 = torch.nn.BatchNorm1d(dim)
+
+        nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        self.conv5 = GINConv(nn5)
+        self.bn5 = torch.nn.BatchNorm1d(dim)
+        """
+        self.fc1 = Linear(dim, dim)
+        self.fc2 = Linear(dim, dataset.num_classes)
+
+    def forward(self):
+        edge_index = data.edge_index
+        x = data.x
+        x = F.relu(self.conv1(x, edge_index))
+        x = self.bn1(x)
+        x = F.relu(self.conv2(x, edge_index))
+        x = self.bn2(x)
+        x = F.relu(self.conv3(x, edge_index))
+        """
+        x = self.bn3(x)
+        x = F.relu(self.conv4(x, edge_index))
+        x = self.bn4(x)
+        x = F.relu(self.conv5(x, edge_index))
+        x = self.bn5(x)
+        x = F.relu(self.fc1(x))
+        """
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=-1)
+
+
+def train(model):
     model.train() # sets mode
     optimizer.zero_grad()
     # model() implicitly calls forward()
@@ -59,7 +113,7 @@ def train():
     optimizer.step()
 
 
-def test():
+def test(model):
     model.eval()
     logits, accs = model(), []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
@@ -77,6 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
     parser.add_argument('feature_type', default="LDP", help='Type of features to use')
+    parser.add_argument('--model', default="mlp2", help='Model type')
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
@@ -84,18 +139,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    if args.model == "mlp2":
+        model_type = MLP2
+    elif args.model == "mlp3":
+        model_type = MLP3
+    elif args.model == "gin":
+        model_type = GIN
     # Testing over multiple test sets 
     trial_test_acc = [] 
+
     for tr in range(TRIALS):
         dataset = Airport(args.data_dir, args.data_name, args.feature_type) 
         data = dataset[0]
-        model, data = MLP2(args.hidden_dim).to(device), data.to(device)
+
+        model, data = model_type(args.hidden_dim).to(device), data.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
         best_val_acc = test_acc = 0
         for epoch in range(args.epochs):
-            train()
-            train_acc, val_acc, tmp_test_acc = test()
+            train(model)
+            train_acc, val_acc, tmp_test_acc = test(model)
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 test_acc = tmp_test_acc

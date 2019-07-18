@@ -62,12 +62,14 @@ def degreeOnlyFeatures(g):
     Current implementation repeats value to fill
         up to feature dimension
     """
-    dim = 10 
+    
+    dim = 1 
     nodes = list(sorted(g.nodes))
     deg_stats = [g.degree[u] for u in nodes] 
     deg_stats = np.reshape(np.array(deg_stats), (len(deg_stats),1))
     data = normalize(deg_stats)
     data = np.repeat(data, dim, axis=1)
+   
     return data 
 
 
