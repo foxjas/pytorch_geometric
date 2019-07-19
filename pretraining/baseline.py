@@ -143,7 +143,7 @@ if __name__ == '__main__':
     # TODO: data loading is hacky; should load all data once, except
     #   for the train/validation/test masks which change per trial
     for tr in range(TRIALS):
-        dataset = Airport(args.data_dir, args.data_name, args.feature_type) 
+        dataset = Airport(args.data_dir, args.data_name, args.feature_type, load_data=False)
         data = dataset[0].to(device)
         if model_type is GIN: 
             model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes)

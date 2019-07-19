@@ -23,20 +23,32 @@ class Airport(InMemoryDataset):
             an :obj:`torch_geometric.data.Data` object and returns a
             transformed version. The data object will be transformed before
             being saved to disk. (default: :obj:`None`)
+
+    Functionality:
+        - set train/validation/test split ratio, and new masks
+        - ignore .dat in processed/
+        - set new labels (e.g. from pretrain)
     """
 
-    def __init__(self, root, name, feature_type, transform=None, pre_transform=None):
+    def __init__(self, root, name, feature_type, load_data=False, transform=None, pre_transform=None):
         self.name = name
         self.feature_type = feature_type
+        self.data_mutable = None
         super(Airport, self).__init__(root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0])
-
+        if load_data:
+            self.data, self.slices = torch.load(self.processed_paths[0])
+        else:
+            self.process()  
+           
     @property
     def raw_file_names(self):
         return ['']
 
     @property
     def processed_file_names(self):
+        """ 
+        Checks if data file exists. If so, skip process 
+        """
         processed_name = "{}_{}_data.pt".format(self.name, self.feature_type)
         return processed_name
 
@@ -44,9 +56,16 @@ class Airport(InMemoryDataset):
         pass
 
     def process(self):
-        data = read_airport_data(self.root, self.name, self.feature_type)
-        data, slices = self.collate([data])
-        torch.save((data, slices), self.processed_paths[0])
+        self.data_mutable = read_airport_data(self.root, self.name, self.feature_type)
+        self.data, self.slices = self.collate([self.data_mutable])
+        torch.save((self.data, self.slices), self.processed_paths[0])
+
+    def update_data():
+        """ 
+        self.mutable_data = ?
+        self.mutable_data.y = new_y 
+        """
+        pass
 
     def __repr__(self):
         return '{}()'.format(self.name)
