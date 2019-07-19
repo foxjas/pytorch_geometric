@@ -9,41 +9,34 @@ from torch_geometric.datasets import Airport
 from torch_geometric.nn import GINConv, global_add_pool
 import numpy as np
 
-dataset = None
-data = None
-
 
 class MLP2(torch.nn.Module):
     """ Two layer MLP """
-    def __init__(self, hidden_dim):
+    def __init__(self, x, dim_in, dim_h, dim_out):
         super(MLP2, self).__init__()
-        dim_h = hidden_dim 
-        dim_in = int(dataset.num_features)
-        dim_out = int(dataset.num_classes)
+        self.x = x
         self.linear1 = Linear(dim_in, dim_h)    
         self.linear2 = Linear(dim_h, dim_out)
         self.dropout = torch.nn.Dropout(p=0.5)
 
     def forward(self):
-        x = self.dropout(F.relu(self.linear1(data.x)))
+        x = self.dropout(F.relu(self.linear1(self.x)))
         x = self.linear2(x)
         return F.log_softmax(x, dim=-1)
 
 
 class MLP3(torch.nn.Module):
     """ Three layer MLP """
-    def __init__(self, hidden_dim):
+    def __init__(self, x, dim_in, dim_h, dim_out):
         super(MLP3, self).__init__()
-        dim_h = hidden_dim 
-        dim_in = int(dataset.num_features)
-        dim_out = int(dataset.num_classes)
+        self.x = x
         self.linear1 = Linear(dim_in, dim_h)    
         self.linear2 = Linear(dim_h, dim_h)
         self.linear3 = Linear(dim_h, dim_out)
         self.dropout = torch.nn.Dropout(p=0.5)
 
     def forward(self):
-        x = self.dropout(F.relu(self.linear1(data.x)))
+        x = self.dropout(F.relu(self.linear1(self.x)))
         x = self.dropout(F.relu(self.linear2(x)))
         x = self.linear3(x)
         return F.log_softmax(x, dim=-1)
@@ -54,13 +47,13 @@ class GIN(torch.nn.Module):
     Adapted from ../examples/mutag_gin.py 
     """
 
-    def __init__(self, hidden_dim):
+    def __init__(self, x, edge_index, dim_in, dim_h, dim_out):
         super(GIN, self).__init__()
+        self.x = x
+        self.edge_index = edge_index
+        dim = dim_h 
 
-        num_features = dataset.num_features
-        dim = hidden_dim
-
-        nn1 = Sequential(Linear(num_features, dim), ReLU(), Linear(dim, dim))
+        nn1 = Sequential(Linear(dim_in, dim), ReLU(), Linear(dim, dim))
         self.conv1 = GINConv(nn1)
         self.bn1 = torch.nn.BatchNorm1d(dim)
 
@@ -82,12 +75,11 @@ class GIN(torch.nn.Module):
         self.bn5 = torch.nn.BatchNorm1d(dim)
         """
         self.fc1 = Linear(dim, dim)
-        self.fc2 = Linear(dim, dataset.num_classes)
+        self.fc2 = Linear(dim, dim_out) 
 
     def forward(self):
-        edge_index = data.edge_index
-        x = data.x
-        x = F.relu(self.conv1(x, edge_index))
+        edge_index = self.edge_index
+        x = F.relu(self.conv1(self.x, edge_index))
         x = self.bn1(x)
         x = F.relu(self.conv2(x, edge_index))
         x = self.bn2(x)
@@ -105,7 +97,7 @@ class GIN(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
-def train(model):
+def train(model, data):
     model.train() # sets mode
     optimizer.zero_grad()
     # model() implicitly calls forward()
@@ -113,7 +105,7 @@ def train(model):
     optimizer.step()
 
 
-def test(model):
+def test(model, data):
     model.eval()
     logits, accs = model(), []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
@@ -135,7 +127,6 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
-
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -148,16 +139,22 @@ if __name__ == '__main__':
     # Testing over multiple test sets 
     trial_test_acc = [] 
 
+    # TODO: data loading is hacky; should load all data once, except
+    #   for the train/validation/test masks which change per trial
     for tr in range(TRIALS):
         dataset = Airport(args.data_dir, args.data_name, args.feature_type) 
-        data = dataset[0]
+        data = dataset[0].to(device)
+        if model_type is GIN: 
+            model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes)
+        else:
+            model = model_type(data.x, dataset.num_features, args.hidden_dim, dataset.num_classes)
+        model = model.to(device)
 
-        model, data = model_type(args.hidden_dim).to(device), data.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
         best_val_acc = test_acc = 0
         for epoch in range(args.epochs):
-            train(model)
-            train_acc, val_acc, tmp_test_acc = test(model)
+            train(model, data)
+            train_acc, val_acc, tmp_test_acc = test(model, data)
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 test_acc = tmp_test_acc
