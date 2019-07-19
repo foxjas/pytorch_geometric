@@ -16,12 +16,12 @@ class MLP2(torch.nn.Module):
         super(MLP2, self).__init__()
         self.x = x
         self.linear1 = Linear(dim_in, dim_h)    
-        self.linear2 = Linear(dim_h, dim_out)
+        self.linear_out = Linear(dim_h, dim_out)
         self.dropout = torch.nn.Dropout(p=0.5)
 
     def forward(self):
         x = self.dropout(F.relu(self.linear1(self.x)))
-        x = self.linear2(x)
+        x = self.linear_out(x)
         return F.log_softmax(x, dim=-1)
 
 
@@ -32,13 +32,13 @@ class MLP3(torch.nn.Module):
         self.x = x
         self.linear1 = Linear(dim_in, dim_h)    
         self.linear2 = Linear(dim_h, dim_h)
-        self.linear3 = Linear(dim_h, dim_out)
+        self.linear_out = Linear(dim_h, dim_out)
         self.dropout = torch.nn.Dropout(p=0.5)
 
     def forward(self):
         x = self.dropout(F.relu(self.linear1(self.x)))
         x = self.dropout(F.relu(self.linear2(x)))
-        x = self.linear3(x)
+        x = self.linear_out(x)
         return F.log_softmax(x, dim=-1)
 
 
@@ -97,7 +97,7 @@ class GIN(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
-def train(model, data):
+def train(model, data, optimizer):
     model.train() # sets mode
     optimizer.zero_grad()
     # model() implicitly calls forward()
@@ -127,6 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
+    parser.add_argument('--save_model', default=False, action='store_true', help='Path to save model parameters to')
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -153,7 +154,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
         best_val_acc = test_acc = 0
         for epoch in range(args.epochs):
-            train(model, data)
+            train(model, data, optimizer)
             train_acc, val_acc, tmp_test_acc = test(model, data)
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
@@ -170,3 +171,7 @@ if __name__ == '__main__':
     test_std = np.std(trial_test_acc)  
     log = 'Trials: {}, Test average: {:.4f}, Test std: {:.4f}'
     print(log.format(TRIALS, test_avg, test_std))
+
+    if (args.save_model):
+        model_save_path = "{}-{}.pt".format(args.model, args.feature_type)
+        torch.save(model.state_dict(), model_save_path)
