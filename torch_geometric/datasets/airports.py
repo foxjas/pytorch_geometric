@@ -41,7 +41,7 @@ class Airport(InMemoryDataset):
         #else:
         #    self.process()  
         self.read_airport_data()
-        self.set_label_split(0.6, 0.2)
+        self.set_label_split(0.6, 0.2, 0.2)
         self.update_data()
            
     @property
@@ -66,7 +66,7 @@ class Airport(InMemoryDataset):
         #torch.save((self.data, self.slices), self.processed_paths[0])
         pass
 
-    def set_label_split(self, train_ratio=0.6, validation_ratio=0.2): 
+    def set_label_split(self, train_ratio=0.6, validation_ratio=0.2, test_ratio=0.2): 
         """ 
         Sets training, validation, and test masks over data based on
         specified train and validation ratios (with respect to 
@@ -77,9 +77,10 @@ class Airport(InMemoryDataset):
         """
         
         y = self.y
-        print("y: {}".format(y.size(0)))
+        #print("y: {}".format(y.size(0)))
         if train_ratio < 1:
-            train_index, val_index, test_index = train_validation_test_split(y, train_ratio, validation_ratio)
+            train_index, val_index, test_index = train_validation_test_split(
+                    y, train_ratio, validation_ratio, test_ratio)
         else:
             train_index = np.arange(len(y))
             val_index = np.empty(0)
@@ -97,12 +98,12 @@ class Airport(InMemoryDataset):
         coo = readBinary(self.graph_bin_path)
         graph_tensor = torch.Tensor(coo).t()
         self.edge_index = graph_tensor.long() 
-        print("edge_index: {}".format(self.edge_index.size()))
+        #print("edge_index: {}".format(self.edge_index.size()))
 
         # create features tensor
         feats_data = np.array(readBinary(self.feats_bin_path))
         self.x = torch.Tensor(feats_data) 
-        print("feats_data: {}".format(self.x.size()))
+        #print("feats_data: {}".format(self.x.size()))
 
         # process labels 
         labels_data = np.array(readBinary(self.labels_bin_path), dtype=np.uint8)
@@ -126,35 +127,9 @@ class Airport(InMemoryDataset):
     def __repr__(self):
         return '{}()'.format(self.name)
 
-# TODO: this should be called by user, instead of Airports class 
-def prepare_airport_data(folder, data_name, feature_type):
-    """
-    Read and process raw files, and save to binary:
-        - COO edge list
-        - Generated features
-        - Labels
-    """
-    graph_path = os.path.join(folder, "{}.edgelist".format(data_name))
-    graph = readEdgelist(graph_path) # singleton case?
-    graph, old_new_node_ids = relabelGraph(graph) 
-    coo = graphToCOO(graph) 
-    saveBinary(coo, data_name, "edges", folder) # TODO: replace with single path argument
 
-    if feature_type == "LDP":
-       feats_data = ldp_features(graph)
-    elif feature_type == "degree":
-       feats_data = degreeOnlyFeatures(graph) 
-    base_name = data_name + "-{}".format(feature_type)
-    saveBinary(feats_data, base_name, "feats", folder)
-
-    labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))
-    node_labels = readLabels(labels_path)
-    # reorder labels according to new graph ordering
-    node_labels = reorderLabels(old_new_node_ids, node_labels)
-    saveBinary(node_labels, data_name, "labels", folder)
-
-
-def train_validation_test_split(y, train_ratio, valid_ratio):
+# TODO: implement version based on absolute sample counts
+def train_validation_test_split(y, train_ratio, valid_ratio, test_ratio):
     """
     Return indices corresponding to stratified train, validation, and
     test splits.
@@ -164,33 +139,39 @@ def train_validation_test_split(y, train_ratio, valid_ratio):
     
     y = y.numpy()
     # print total class counts
-    #unique, counts = np.unique(y, return_counts=True)
+    unique, counts = np.unique(y, return_counts=True)
     #class_counts = dict(zip(unique, counts))
     #print("total class counts: {}".format(class_counts))
 
-    rest_ratio = 1-train_ratio
-    indices = np.arange(len(y))
+    n = n0 = len(y)
+    indices = np.arange(n)
+    rel_ratio = train_ratio*n/n0
     y_train, y_rest, ind_train, ind_rest = \
-            train_test_split(y, indices, test_size=rest_ratio, stratify=y)
+            train_test_split(y, indices, test_size=1-rel_ratio, stratify=y)
+   
+    n1 = len(y_rest)
+    #print("n1: {}".format(n1))
+    rel_ratio = valid_ratio*n/n1
+    #print("rel_ratio: {}".format(rel_ratio))
+    y_valid, y_rest, ind_valid, ind_rest = \
+            train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
 
-    test_ratio = 1-(valid_ratio/rest_ratio) 
-    y_valid, y_test, ind_valid, ind_test = \
-            train_test_split(y_rest, ind_rest, test_size=test_ratio, stratify=y_rest)
+    n2 = len(y_rest)
+    #print("n2: {}".format(n2))
+    rel_ratio = test_ratio*n/n2
+    #print("rel_ratio: {}".format(rel_ratio))
+    if (1-rel_ratio)*n2 < len(unique): # can't create split with < number of classes; 
+                                       # train_test_split complains
+        y_test, ind_test = y_rest, ind_rest
+        y_rest, ind_rest = np.empty(0), np.empty(0)
+    else:
+        y_test, y_rest, ind_test, ind_rest = \
+            train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
 
-    """
-    unique, counts = np.unique(y_valid, return_counts=True)
-    class_counts = dict(zip(unique, counts))
-    print("validation class counts: {}".format(class_counts))
-
-    unique, counts = np.unique(y_test, return_counts=True)
-    class_counts = dict(zip(unique, counts))
-    print("test class counts: {}".format(class_counts))
-    """
-
-    ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test)
+    ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test) + list(ind_rest)
     assert len(set(ind_reconstr)) == len(indices)
 
-    print("({},{},{})".format(len(ind_train), len(ind_valid), len(ind_test)))
+    #print("({},{},{})".format(len(ind_train), len(ind_valid), len(ind_test)))
     return ind_train, ind_valid, ind_test
 
 
@@ -201,3 +182,5 @@ def sample_mask(index, num_nodes):
     mask = torch.zeros((num_nodes, ), dtype=torch.uint8)
     mask[index] = 1
     return mask
+
+

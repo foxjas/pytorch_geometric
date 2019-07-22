@@ -66,6 +66,7 @@ def degreeOnlyFeatures(g):
     dim = 1 
     nodes = list(sorted(g.nodes))
     deg_stats = [g.degree[u] for u in nodes] 
+    #deg_stats = [np.random.random() for u in nodes]
     deg_stats = np.reshape(np.array(deg_stats), (len(deg_stats),1))
     data = normalize(deg_stats)
     data = np.repeat(data, dim, axis=1)

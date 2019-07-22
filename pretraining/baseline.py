@@ -126,9 +126,12 @@ if __name__ == '__main__':
     parser.add_argument('--model', default="mlp2", help='Model type')
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
+    parser.add_argument('--train_ratio', default=0.6, type=float, help='Training data ratio')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     parser.add_argument('--save_model', default=False, action='store_true', help='Path to save model parameters to')
     args = parser.parse_args()
+
+    print(args.feature_type)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.model == "mlp2":
@@ -142,7 +145,7 @@ if __name__ == '__main__':
 
     dataset = Airport(args.data_dir, args.data_name, args.feature_type, load_data=False)
     for tr in range(TRIALS):
-        dataset.set_label_split(0.6, 0.2)
+        dataset.set_label_split(args.train_ratio, 0.2, 0.2)
         dataset.update_data()
         data = dataset[0].to(device)
         if model_type is GIN: 
@@ -162,6 +165,9 @@ if __name__ == '__main__':
                 if args.verbose:
                     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
                     print(log.format(epoch+1, train_acc, best_val_acc, test_acc))
+
+        #log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+        #print(log.format(epoch+1, train_acc, val_acc, tmp_test_acc))
         if args.verbose:
             print("-----------------------------------------------------")
         trial_test_acc.append(test_acc)
