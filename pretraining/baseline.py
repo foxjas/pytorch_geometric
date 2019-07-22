@@ -140,10 +140,10 @@ if __name__ == '__main__':
     # Testing over multiple test sets 
     trial_test_acc = [] 
 
-    # TODO: data loading is hacky; should load all data once, except
-    #   for the train/validation/test masks which change per trial
+    dataset = Airport(args.data_dir, args.data_name, args.feature_type, load_data=False)
     for tr in range(TRIALS):
-        dataset = Airport(args.data_dir, args.data_name, args.feature_type, load_data=False)
+        dataset.set_label_split(0.6, 0.2)
+        dataset.update_data()
         data = dataset[0].to(device)
         if model_type is GIN: 
             model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes)

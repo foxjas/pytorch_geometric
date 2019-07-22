@@ -15,14 +15,6 @@ class Airport(InMemoryDataset):
     Args:
         root (string): Root directory where the dataset should be saved.
         name of the dataset 
-        transform (callable, optional): A function/transform that takes in an
-            :obj:`torch_geometric.data.Data` object and returns a transformed
-            version. The data object will be transformed before every access.
-            (default: :obj:`None`)
-        pre_transform (callable, optional): A function/transform that takes in
-            an :obj:`torch_geometric.data.Data` object and returns a
-            transformed version. The data object will be transformed before
-            being saved to disk. (default: :obj:`None`)
 
     Functionality:
         - set train/validation/test split ratio, and new masks
@@ -30,15 +22,27 @@ class Airport(InMemoryDataset):
         - set new labels (e.g. from pretrain)
     """
 
-    def __init__(self, root, name, feature_type, load_data=False, transform=None, pre_transform=None):
+    def __init__(self, root, name, feature_type, load_data=False):
         self.name = name
         self.feature_type = feature_type
-        self.data_mutable = None
-        super(Airport, self).__init__(root, transform, pre_transform)
-        if load_data:
-            self.data, self.slices = torch.load(self.processed_paths[0])
-        else:
-            self.process()  
+        self.graph_bin_path = os.path.join(root, "{}_edges.dat".format(name))
+        self.labels_bin_path = os.path.join(root, "{}_labels.dat".format(name))
+        self.feats_bin_path = os.path.join(root, "{}-{}_feats.dat".format(name, feature_type))
+        self.data_mutable = Data() 
+        self.x = None
+        self.y = None
+        self.edge_index = None
+        self.train_mask = None
+        self.val_mask = None
+        self.test_mask = None
+        super(Airport, self).__init__(root)
+        #if load_data:
+        #    self.data, self.slices = torch.load(self.processed_paths[0])
+        #else:
+        #    self.process()  
+        self.read_airport_data()
+        self.set_label_split(0.6, 0.2)
+        self.update_data()
            
     @property
     def raw_file_names(self):
@@ -56,66 +60,73 @@ class Airport(InMemoryDataset):
         pass
 
     def process(self):
-        self.data_mutable = read_airport_data(self.root, self.name, self.feature_type)
-        self.data, self.slices = self.collate([self.data_mutable])
-        torch.save((self.data, self.slices), self.processed_paths[0])
-
-    def update_data():
-        """ 
-        self.mutable_data = ?
-        self.mutable_data.y = new_y 
-        """
+        #self.read_airport_data()
+        #self.set_label_split()
+        #self.update_data()
+        #torch.save((self.data, self.slices), self.processed_paths[0])
         pass
+
+    def set_label_split(self, train_ratio=0.6, validation_ratio=0.2): 
+        """ 
+        Sets training, validation, and test masks over data based on
+        specified train and validation ratios (with respect to 
+        original data). Test ratio is inferred as 1 - train_ratio - 
+        validation_ratio. 
+
+        Does NOT check for invalid ratio combinations (e.g. sum > 1)
+        """
+        
+        y = self.y
+        print("y: {}".format(y.size(0)))
+        if train_ratio < 1:
+            train_index, val_index, test_index = train_validation_test_split(y, train_ratio, validation_ratio)
+        else:
+            train_index = np.arange(len(y))
+            val_index = np.empty(0)
+            test_index = np.empty(0)
+        self.train_mask = sample_mask(train_index, num_nodes=y.size(0))
+        self.val_mask = sample_mask(val_index, num_nodes=y.size(0))
+        self.test_mask = sample_mask(test_index, num_nodes=y.size(0))
+
+
+    def read_airport_data(self):
+        """
+        Reads airport data binaries (edges, labels, features)
+            and stores as Tensors.
+        """
+        coo = readBinary(self.graph_bin_path)
+        graph_tensor = torch.Tensor(coo).t()
+        self.edge_index = graph_tensor.long() 
+        print("edge_index: {}".format(self.edge_index.size()))
+
+        # create features tensor
+        feats_data = np.array(readBinary(self.feats_bin_path))
+        self.x = torch.Tensor(feats_data) 
+        print("feats_data: {}".format(self.x.size()))
+
+        # process labels 
+        labels_data = np.array(readBinary(self.labels_bin_path), dtype=np.uint8)
+        self.y = torch.Tensor(labels_data).long()
+
+
+    def update_data(self):
+        """ 
+        Updates data object using latest value assignments
+        """
+        self.data_mutable.x = self.x
+        self.data_mutable.y = self.y
+        self.data_mutable.edge_index = self.edge_index
+        self.data_mutable.train_mask = self.train_mask
+        self.data_mutable.val_mask = self.val_mask
+        self.data_mutable.test_mask = self.test_mask
+
+        self.data, self.slices = self.collate([self.data_mutable])
+
 
     def __repr__(self):
         return '{}()'.format(self.name)
 
-
-def read_airport_data(folder, data_name, feature_type):
-    """
-    Reads and processes airport data 
-    Returns graph, feature, label tensors,
-        train/validation/test masks
-    """
-    graph_bin_path = os.path.join(folder, "{}_edges.dat".format(data_name))
-    labels_bin_path = os.path.join(folder, "{}_labels.dat".format(data_name))
-    feats_path = os.path.join(folder, "{}-{}_feats.dat".format(data_name, feature_type))
- 
-    data_ready = os.path.isfile(graph_bin_path) and \
-            os.path.isfile(feats_path) and \
-            os.path.isfile(labels_bin_path)
-    if not data_ready:
-        prepare_airport_data(folder, data_name, feature_type)
-
-    # read graph and create graph tensor
-    coo = readBinary(graph_bin_path)
-    graph_tensor = torch.Tensor(coo).t().int()
-    print("graph_tensor: {}".format(graph_tensor.size()))
-
-    # create features tensor
-    feats_data = np.array(readBinary(feats_path))
-    print("feats_data: {}".format(feats_data.shape))
-  
-    # process labels 
-    labels_data = np.array(readBinary(labels_bin_path), dtype=np.uint8)
-    print("labels: {}".format(len(labels_data)))
-    train_index, val_index, test_index = train_validation_test_split(feats_data, labels_data, 0.6, 0.2)
-    
-    x = torch.Tensor(feats_data)
-    y = torch.Tensor(labels_data).long()
-    edge_index = graph_tensor.long() 
-    train_mask = sample_mask(train_index, num_nodes=y.size(0))
-    val_mask = sample_mask(val_index, num_nodes=y.size(0))
-    test_mask = sample_mask(test_index, num_nodes=y.size(0))
-        
-    data = Data(x=x, edge_index=edge_index, y=y)
-    data.train_mask = train_mask
-    data.val_mask = val_mask
-    data.test_mask = test_mask
-
-    return data
-
-
+# TODO: this should be called by user, instead of Airports class 
 def prepare_airport_data(folder, data_name, feature_type):
     """
     Read and process raw files, and save to binary:
@@ -143,7 +154,7 @@ def prepare_airport_data(folder, data_name, feature_type):
     saveBinary(node_labels, data_name, "labels", folder)
 
 
-def train_validation_test_split(X, y, train_ratio, valid_ratio):
+def train_validation_test_split(y, train_ratio, valid_ratio):
     """
     Return indices corresponding to stratified train, validation, and
     test splits.
@@ -151,19 +162,20 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
         to this function for the same data.
     """
     
-    # TODO: print total class counts
-    unique, counts = np.unique(y, return_counts=True)
-    class_counts = dict(zip(unique, counts))
-    print("total class counts: {}".format(class_counts))
+    y = y.numpy()
+    # print total class counts
+    #unique, counts = np.unique(y, return_counts=True)
+    #class_counts = dict(zip(unique, counts))
+    #print("total class counts: {}".format(class_counts))
 
     rest_ratio = 1-train_ratio
     indices = np.arange(len(y))
-    X_train, X_rest, y_train, y_rest, ind_train, ind_rest = \
-            train_test_split(X, y, indices, test_size=rest_ratio, stratify=y)
+    y_train, y_rest, ind_train, ind_rest = \
+            train_test_split(y, indices, test_size=rest_ratio, stratify=y)
 
     test_ratio = 1-(valid_ratio/rest_ratio) 
-    X_valid, X_test, y_valid, y_test, ind_valid, ind_test = \
-            train_test_split(X_rest, y_rest, ind_rest, test_size=test_ratio, stratify=y_rest)
+    y_valid, y_test, ind_valid, ind_test = \
+            train_test_split(y_rest, ind_rest, test_size=test_ratio, stratify=y_rest)
 
     """
     unique, counts = np.unique(y_valid, return_counts=True)
@@ -177,6 +189,8 @@ def train_validation_test_split(X, y, train_ratio, valid_ratio):
 
     ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test)
     assert len(set(ind_reconstr)) == len(indices)
+
+    print("({},{},{})".format(len(ind_train), len(ind_valid), len(ind_test)))
     return ind_train, ind_valid, ind_test
 
 
