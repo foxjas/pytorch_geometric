@@ -4,7 +4,7 @@ sys.path = [os.path.expanduser("~/pytorch_geometric")] + sys.path
 import argparse
 import torch
 from pretraining.airports import Airport
-from pretraining.models import MLP2,MLP3,GIN,train,test 
+from pretraining.models import MLP2,MLP3,GIN,train_step,test_step 
 import numpy as np
 
 
@@ -49,8 +49,8 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
         best_val_acc = test_acc = 0
         for epoch in range(args.epochs):
-            train(model, data, optimizer)
-            train_acc, val_acc, tmp_test_acc = test(model, data)
+            train_step(model, data, optimizer)
+            train_acc, val_acc, tmp_test_acc = test_step(model, data)
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 test_acc = tmp_test_acc

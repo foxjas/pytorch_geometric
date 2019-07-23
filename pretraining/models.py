@@ -90,7 +90,7 @@ class GIN(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
-def train(model, data, optimizer):
+def train_step(model, data, optimizer):
     model.train() # sets mode
     optimizer.zero_grad()
     # model() implicitly calls forward()
@@ -98,7 +98,7 @@ def train(model, data, optimizer):
     optimizer.step()
 
 
-def test(model, data):
+def test_step(model, data):
     model.eval()
     logits, accs = model(), []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
