@@ -1,4 +1,3 @@
-from .airports import Airport
 from .karate import KarateClub
 from .tu_dataset import TUDataset
 from .planetoid import Planetoid
@@ -27,7 +26,6 @@ from .icews import ICEWS18
 from .gdelt import GDELT
 
 __all__ = [
-    'Airport',
     'KarateClub',
     'TUDataset',
     'Planetoid',

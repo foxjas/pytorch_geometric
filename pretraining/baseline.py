@@ -5,7 +5,7 @@ import argparse
 import torch
 import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ReLU
-from torch_geometric.datasets import Airport 
+from pretraining.airports import Airport
 from torch_geometric.nn import GINConv, global_add_pool
 import numpy as np
 
@@ -130,8 +130,6 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     parser.add_argument('--save_model', default=False, action='store_true', help='Path to save model parameters to')
     args = parser.parse_args()
-
-    print(args.feature_type)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.model == "mlp2":
