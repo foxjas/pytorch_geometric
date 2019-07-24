@@ -8,7 +8,7 @@ from models import train_step, test_step, MLP2, MLP3, GIN
 import numpy as np
 from pprint import pprint
 
-TRIALS = 10
+LEARNING_RATE_PRE = 0.01
 LEARNING_RATE = 0.01
 
 def initParamsFromModel(model_source, model_target):
@@ -19,7 +19,7 @@ def initParamsFromModel(model_source, model_target):
     target_dict = model_target.state_dict()
     #pprint("before: {}".format(target_dict))
     source_dict = model_source.state_dict()
-    source_dict = {k: v for k,v in source_dict.items() if 'out' not in k}  
+    source_dict = {k: v for k,v in source_dict.items() if '_out' not in k}  
     #source_dict = {k: v for k,v in source_dict.items()}  
     target_dict.update(source_dict)
     model_target.load_state_dict(target_dict)
@@ -29,7 +29,7 @@ def pretrain(model, data, epochs=200, verbose=False):
     """
     Stopping criteria?
     """
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE_PRE, weight_decay=5e-4)
     for epoch in range(epochs):
         train_step(model, data, optimizer)
         train_acc = train_accuracy(model, data)
@@ -63,10 +63,13 @@ if __name__ == '__main__':
     parser.add_argument('--train_ratio', default=0.6, type=float, help='Training data ratio')
     parser.add_argument('--epochs_pre', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
+    parser.add_argument('--device', default=0, type=int, help='GPU device ID')
+    parser.add_argument('--trials', default=10, type=int, help='Number of trials to average over, for testing')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    torch.cuda.set_device(args.device)
     if args.model == "mlp2":
         model_type = MLP2
     elif args.model == "mlp3":
@@ -89,7 +92,7 @@ if __name__ == '__main__':
     """ Fine-tuning """
     dataset = Airport(args.data_dir, args.data_name, args.feature_type) 
     trial_test_acc = [] 
-    for tr in range(TRIALS):
+    for tr in range(args.trials):
         dataset.set_label_split(args.train_ratio, 0.2, 0.2)
         dataset.update_data()
         data = dataset[0].to(device)
@@ -119,5 +122,6 @@ if __name__ == '__main__':
     # Report average test accuracy, standard deviation
     test_avg = np.mean(trial_test_acc)
     test_std = np.std(trial_test_acc)  
-    log = 'Trials: {}, Test average: {:.4f}, Test std: {:.4f}'
-    print(log.format(TRIALS, test_avg, test_std))
+
+    log = 'Pretrain Data: {}, Data: {}, Train ratio: {:4f}, Epochs: {}, Average: {:.4f}, Std: {:.4f}'
+    print(log.format(args.data_name_pre, args.data_name, args.train_ratio, args.epochs, test_avg, test_std))

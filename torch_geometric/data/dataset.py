@@ -121,12 +121,12 @@ class Dataset(torch.utils.data.Dataset):
         if files_exist(self.processed_paths):  # pragma: no cover
             return
 
-        print('Processing...')
+        #print('Processing...')
 
         makedirs(self.processed_dir)
         self.process()
 
-        print('Done!')
+        #print('Done!')
 
     def __getitem__(self, idx):  # pragma: no cover
         r"""Gets the data object at index :obj:`idx` and transforms it (in case

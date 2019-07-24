@@ -153,16 +153,12 @@ def train_validation_test_split(y, train_ratio, valid_ratio, test_ratio):
             train_test_split(y, indices, test_size=1-rel_ratio, stratify=y)
    
     n1 = len(y_rest)
-    #print("n1: {}".format(n1))
     rel_ratio = valid_ratio*n/n1
-    #print("rel_ratio: {}".format(rel_ratio))
     y_valid, y_rest, ind_valid, ind_rest = \
             train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
 
     n2 = len(y_rest)
-    #print("n2: {}".format(n2))
     rel_ratio = test_ratio*n/n2
-    #print("rel_ratio: {}".format(rel_ratio))
     if (1-rel_ratio)*n2 < len(unique): # can't create split with < number of classes; 
                                        # train_test_split complains
         y_test, ind_test = y_rest, ind_rest
@@ -171,6 +167,7 @@ def train_validation_test_split(y, train_ratio, valid_ratio, test_ratio):
         y_test, y_rest, ind_test, ind_rest = \
             train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
 
+    # checks that elements of split are unique and encompass whole set
     ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test) + list(ind_rest)
     assert len(set(ind_reconstr)) == len(indices)
 

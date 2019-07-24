@@ -8,7 +8,6 @@ from pretraining.models import MLP2,MLP3,GIN,train_step,test_step
 import numpy as np
 
 
-TRIALS = 10
 LEARNING_RATE = 0.01
 
 if __name__ == '__main__':
@@ -21,11 +20,14 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--train_ratio', default=0.6, type=float, help='Training data ratio')
+    parser.add_argument('--trials', default=10, type=int, help='Number of trials to average over, for testing')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
+    parser.add_argument('--device', default=0, type=int, help='GPU device ID')
     parser.add_argument('--save_model', default=False, action='store_true', help='Path to save model parameters to')
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    torch.cuda.set_device(args.device)
     if args.model == "mlp2":
         model_type = MLP2
     elif args.model == "mlp3":
@@ -36,7 +38,7 @@ if __name__ == '__main__':
     trial_test_acc = [] 
 
     dataset = Airport(args.data_dir, args.data_name, args.feature_type, load_data=False)
-    for tr in range(TRIALS):
+    for tr in range(args.trials):
         dataset.set_label_split(args.train_ratio, 0.2, 0.2)
         dataset.update_data()
         data = dataset[0].to(device)
@@ -67,8 +69,8 @@ if __name__ == '__main__':
     # Report average test accuracy, standard deviation
     test_avg = np.mean(trial_test_acc)
     test_std = np.std(trial_test_acc)  
-    log = 'Trials: {}, Test average: {:.4f}, Test std: {:.4f}'
-    print(log.format(TRIALS, test_avg, test_std))
+    log = 'Data: {}, Train ratio: {:4f}, Epochs: {}, Test average: {:.4f}, Test std: {:.4f}'
+    print(log.format(args.data_name, args.train_ratio, args.epochs, test_avg, test_std))
 
     if (args.save_model):
         model_save_path = "{}-{}.pt".format(args.model, args.feature_type)
