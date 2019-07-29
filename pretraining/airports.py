@@ -201,6 +201,8 @@ def prepare_airport_data(folder, data_name, feature_type):
        feats_data = ldp_features(graph)
     elif feature_type == "degree":
        feats_data = degreeOnlyFeatures(graph) 
+    elif feature_type == "percentile":
+       feats_data = percentile_features(graph) 
     base_name = data_name + "-{}".format(feature_type)
     saveBinary(feats_data, base_name, "feats", folder)
 

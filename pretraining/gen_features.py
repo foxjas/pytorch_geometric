@@ -1,7 +1,7 @@
 import numpy as np
 from graph import readEdgelist
 from utils import saveBinary
-
+from pprint import pprint
 import argparse
 import os
 
@@ -74,6 +74,49 @@ def degreeOnlyFeatures(g):
     return data 
 
 
+def percentile_features(g, k=5):
+    """
+    Generate feature matrix according to k percentiles, where k 
+        is at least 2 (min, max)
+
+    """
+
+    stats = []
+    nodes = list(sorted(g.nodes))
+    for u in nodes:
+        deg_u = g.degree[u]
+        neighbors = [g.degree[v] for v in g.neighbors(u)]
+        neighbors = sorted(neighbors)
+        deg_sum = sum(neighbors)
+        nn = len(neighbors)
+        node_info = [] 
+        if nn < k:
+            """ 
+            Can either repeat values, or add zeroes to end
+            """
+            """
+            i = 0
+            while len(node_info) < k:
+                node_info.append(neighbors[i % nn])
+                i += 1
+            node_info = sorted(node_info)
+            """
+            node_info = neighbors + [0 for _ in range(k-nn)]
+        else:
+            steps = int(nn/(k-1))
+            for i in range(k-1):
+                node_info.append(neighbors[i*steps])
+            node_info.append(neighbors[-1])
+        stats.append([deg_u] + [deg_sum] + node_info)
+        #stats.append(node_info)
+                 
+    stats = np.array(stats).reshape((len(stats),-1)) # reshape in case there's no column dimension
+    #print(stats.shape)
+    data = normalize(stats)
+
+    return data 
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generates feature vectors for graphs')
 
@@ -89,6 +132,8 @@ if __name__ == '__main__':
         features = ldp_features(g)
     elif args.feat_type == "degree":
         features = degreeOnlyFeatures(g)
+    elif args.feat_type == "percentile":
+        features = percentile_features(g)
 
     if args.save_dir:
         graph_parse = args.edgelist.split("/")[-1]
