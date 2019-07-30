@@ -92,6 +92,11 @@ class Airport(InMemoryDataset):
         self.val_mask = sample_mask(val_index, num_nodes=y.size(0))
         self.test_mask = sample_mask(test_index, num_nodes=y.size(0))
 
+    def set_features(self, features):
+        """
+        Set new features
+        """
+        self.x = features
 
     def read_airport_data(self):
         """
@@ -115,7 +120,8 @@ class Airport(InMemoryDataset):
 
     def update_data(self):
         """ 
-        Updates data object using latest value assignments
+        Updates data object using latest value assignments.
+        Must be called after any setter, to finalize changes!
         """
         self.data_mutable.x = self.x
         self.data_mutable.y = self.y
@@ -191,12 +197,14 @@ def prepare_airport_data(folder, data_name, feature_type):
         - Generated features
         - Labels
     """
+    # Read and relabel graph. Should be deterministic.
     graph_path = os.path.join(folder, "{}.edgelist".format(data_name))
     graph = readEdgelist(graph_path) # singleton case?
     graph, old_new_node_ids = relabelGraph(graph) 
     coo = graphToCOO(graph) 
     saveBinary(coo, data_name, "edges", folder) # TODO: replace with single path argument
 
+    # Generate features. Depends only on graph
     if feature_type == "LDP":
        feats_data = ldp_features(graph)
     elif feature_type == "degree":
@@ -206,9 +214,9 @@ def prepare_airport_data(folder, data_name, feature_type):
     base_name = data_name + "-{}".format(feature_type)
     saveBinary(feats_data, base_name, "feats", folder)
 
+    # Match labels to graph IDs. Depends only on graph
     labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))
     node_labels = readLabels(labels_path)
-    # reorder labels according to new graph ordering
     node_labels = reorderLabels(old_new_node_ids, node_labels)
     saveBinary(node_labels, data_name, "labels", folder)
 
