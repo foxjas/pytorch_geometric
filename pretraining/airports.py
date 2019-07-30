@@ -92,6 +92,9 @@ class Airport(InMemoryDataset):
         self.val_mask = sample_mask(val_index, num_nodes=y.size(0))
         self.test_mask = sample_mask(test_index, num_nodes=y.size(0))
 
+    def set_labels(self, labels):
+        self.y = labels
+
     def set_features(self, features):
         """
         Set new features

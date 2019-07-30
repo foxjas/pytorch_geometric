@@ -77,7 +77,7 @@ def evaluate_accuracy(args, dataset, features, mask):
     log = 'Mask: {}, Test average: {:.4f}, Test std: {:.4f}'
     mask = map(int, mask)
     mask_str = [str(x) for x in mask]
-    print(log.format(''.join(mask_str), test_avg, test_std))
+    print(log.format(''.join(mask_str), test_avg, test_std), flush=True)
 
 
 LEARNING_RATE = 0.01
