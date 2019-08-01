@@ -57,7 +57,9 @@ if __name__ == '__main__':
 
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
-    parser.add_argument('n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('cluster_ratio', type=float, help='Clusters as ratio of total number of vertices')
+    #parser.add_argument('n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('cluster_type', help='Type of cluster labels to generate')
     parser.add_argument('--model', default="mlp2", help='Model type')
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--train_ratio', default=0.6, type=float, help='Training data ratio')
@@ -68,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     args = parser.parse_args()
 
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.cuda.set_device(args.device)
     if args.model == "mlp2":
@@ -77,8 +80,16 @@ if __name__ == '__main__':
     elif args.model == "gin":
         model_type = GIN
 
+    if args.cluster_type == "degree":
+        cluster_fn = clusterDegree
+    elif args.cluster_type == "kmeans":
+        cluster_fn = cluster_kmeans
+    elif args.cluster_type == "random":
+        cluster_fn = clusterRandom
+
     dataset_pre = Airport(args.data_dir, args.data_name, 'LDP') 
-    labels_pre = cluster_kmeans(dataset_pre.x, args.n_clusters)
+    n_clusters = int(args.cluster_ratio * len(dataset_pre.x)) 
+    labels_pre = cluster_fn(dataset_pre.x, n_clusters)
     dataset_pre.set_labels(labels_pre)
     dataset_pre.set_label_split(1.0, 0, 0)
     dataset_pre.update_data()
@@ -125,5 +136,5 @@ if __name__ == '__main__':
     test_avg = np.mean(trial_test_acc)
     test_std = np.std(trial_test_acc)  
 
-    log = 'Pretrain Data: {}, Data: {}, Train ratio: {:4f}, Epochs: {}, Average: {:.4f}, Std: {:.4f}'
-    print(log.format(args.data_name, args.data_name, args.train_ratio, args.epochs, test_avg, test_std))
+    log = 'Data: {}, Clusters: {}, Train ratio: {:4f}, Epochs: {}, Average: {:.4f}, Std: {:.4f}'
+    print(log.format(args.data_name, n_clusters, args.train_ratio, args.epochs, test_avg, test_std))

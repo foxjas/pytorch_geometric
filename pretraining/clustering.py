@@ -25,7 +25,12 @@ def cluster_kmeans(X, nc):
 
 
 def clusterDegree(X, nc):
-
+    """
+    Label based on degree percentile. Percentiles
+        correspond to number of clusters.
+    - X: normalized features
+    - nc: number of clusters
+    """
     if type(X) is not np.ndarray:
         X = X.numpy()
     
@@ -44,12 +49,22 @@ def clusterDegree(X, nc):
         labels[v_id] = c
     
     labels = torch.Tensor(labels).long()
-    pprint(labels.numpy())
     return labels
 
 
 def clusterTwoLevel(X, nc1, nc2):
     pass 
+
+def clusterRandom(X, nc):
+    """
+    Randomly assigns labels, in range of number of clusters.
+    Does not guarantee uniform class distribution
+    """
+    labels = np.random.randint(0, nc, size=X.shape[0])
+    unique, counts = np.unique(labels, return_counts=True)
+    class_counts = dict(zip(unique, counts))
+    labels = torch.Tensor(labels).long()
+    return labels
 
 
 if __name__ == '__main__':
@@ -58,9 +73,15 @@ if __name__ == '__main__':
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
     parser.add_argument('n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('type', help='Type of cluster labels to generate')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     args = parser.parse_args()
 
     dataset = Airport(args.data_dir, args.data_name, "LDP", load_data=False)
-    #labels = cluster_kmeans(dataset.x, args.n_clusters)
-    labels = clusterDegree(dataset.x, args.n_clusters)
+    if args.type == "degree":
+        clusterDegree(dataset.x, args.n_clusters)
+    elif args.type == "kmeans":
+        cluster_kmeans(dataset.x, args.n_clusters)
+    elif args.type == "random":
+        clusterRandom(dataset.x, args.n_clusters)
+
