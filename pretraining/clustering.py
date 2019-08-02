@@ -24,17 +24,21 @@ def cluster_kmeans(X, nc):
     return labels
 
 
-def clusterDegree(X, nc):
+def clusterDegree(X, cr):
     """
     Label based on degree percentile. Percentiles
         correspond to number of clusters.
     - X: normalized features
-    - nc: number of clusters
+    - cr: ratio of clusters with respect to unique degrees 
     """
     if type(X) is not np.ndarray:
         X = X.numpy()
     
+    n_degs_unique = len(np.unique(X[:,0]))
+    #print("n_deg_unique: {}".format(n_degs_unique))
     n = X.shape[0] 
+    nc = int(n_degs_unique*cr)
+    #print("nc: {}".format(nc))
     sorted_indices = [i for i, x in sorted(enumerate(X), key=lambda v: v[1][0])]
     classes = np.full(n, -1)
     steps = int(n/(nc-1))
@@ -72,14 +76,15 @@ if __name__ == '__main__':
 
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
-    parser.add_argument('n_clusters', type=int, help='Number of clusters')
+    #parser.add_argument('n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('clusters_ratio', type=float, help='Number of clusters')
     parser.add_argument('type', help='Type of cluster labels to generate')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     args = parser.parse_args()
 
     dataset = Airport(args.data_dir, args.data_name, "LDP", load_data=False)
     if args.type == "degree":
-        clusterDegree(dataset.x, args.n_clusters)
+        clusterDegreeByRatio(dataset.x, args.clusters_ratio)
     elif args.type == "kmeans":
         cluster_kmeans(dataset.x, args.n_clusters)
     elif args.type == "random":

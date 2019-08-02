@@ -88,8 +88,7 @@ if __name__ == '__main__':
         cluster_fn = clusterRandom
 
     dataset_pre = Airport(args.data_dir, args.data_name, 'LDP') 
-    n_clusters = int(args.cluster_ratio * len(dataset_pre.x)) 
-    labels_pre = cluster_fn(dataset_pre.x, n_clusters)
+    labels_pre = cluster_fn(dataset_pre.x, args.cluster_ratio)
     dataset_pre.set_labels(labels_pre)
     dataset_pre.set_label_split(1.0, 0, 0)
     dataset_pre.update_data()
@@ -136,5 +135,5 @@ if __name__ == '__main__':
     test_avg = np.mean(trial_test_acc)
     test_std = np.std(trial_test_acc)  
 
-    log = 'Data: {}, Clusters: {}, Train ratio: {:4f}, Epochs: {}, Average: {:.4f}, Std: {:.4f}'
-    print(log.format(args.data_name, n_clusters, args.train_ratio, args.epochs, test_avg, test_std))
+    log = 'Data: {}, Cluster ratio: {}, Train ratio: {:4f}, Epochs: {}, Average: {:.4f}, Std: {:.4f}'
+    print(log.format(args.data_name, args.cluster_ratio, args.train_ratio, args.epochs, test_avg, test_std))
