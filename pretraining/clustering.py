@@ -9,15 +9,18 @@ import torch
 from sklearn.cluster import KMeans
 from pprint import pprint
 
-def cluster_kmeans(X, nc):
+def cluster_kmeans(X, cr):
     """
-    Set clusters as ratio of number of nodes?
+    Set clusters as ratio of number of uniqued data points in X 
     """
     if type(X) is not np.ndarray:
         X = X.numpy()
-    kmeans = KMeans(nc, max_iter=100).fit(X)
-    labels = torch.Tensor(kmeans.labels_).long()
 
+    n = len(np.unique(X, axis=0))
+    nc = int(cr*n)
+    kmeans = KMeans(nc, max_iter=100, random_state=0).fit(X)
+    preds = kmeans.predict(X)
+    labels = torch.Tensor(preds).long()
     #unique, counts = np.unique(labels, return_counts=True)
     #class_counts = dict(zip(unique, counts))
     #print("total class counts: {}".format(class_counts))
@@ -59,11 +62,14 @@ def clusterDegree(X, cr):
 def clusterTwoLevel(X, nc1, nc2):
     pass 
 
-def clusterRandom(X, nc):
+def clusterRandom(X, cr):
     """
     Randomly assigns labels, in range of number of clusters.
     Does not guarantee uniform class distribution
     """
+    if type(X) is not np.ndarray:
+        X = X.numpy()
+    nc = int(cr*X.shape[0])
     labels = np.random.randint(0, nc, size=X.shape[0])
     unique, counts = np.unique(labels, return_counts=True)
     class_counts = dict(zip(unique, counts))
@@ -86,7 +92,7 @@ if __name__ == '__main__':
     if args.type == "degree":
         clusterDegreeByRatio(dataset.x, args.clusters_ratio)
     elif args.type == "kmeans":
-        cluster_kmeans(dataset.x, args.n_clusters)
+        cluster_kmeans(dataset.x, args.clusters_ratio)
     elif args.type == "random":
-        clusterRandom(dataset.x, args.n_clusters)
+        clusterRandom(dataset.x, args.clusters_ratio)
 
