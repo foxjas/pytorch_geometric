@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--trials', default=10, type=int, help='Number of trials to average over, for testing')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
     parser.add_argument('--device', default=0, type=int, help='GPU device ID')
+    parser.add_argument('--lr', default=0.01, type=float, help='Learning rate')
     parser.add_argument('--save_model', default=False, action='store_true', help='Path to save model parameters to')
     args = parser.parse_args()
 
@@ -34,6 +35,8 @@ if __name__ == '__main__':
         model_type = MLP3
     elif args.model == "gin":
         model_type = GIN
+
+    LEARNING_RATE = args.lr
     # Testing over multiple test sets 
     trial_test_acc = [] 
 

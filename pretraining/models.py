@@ -58,7 +58,6 @@ class GIN(torch.nn.Module):
         self.conv3 = GINConv(nn3)
         self.bn3 = torch.nn.BatchNorm1d(dim)
 
-        """
         nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
         self.conv4 = GINConv(nn4)
         self.bn4 = torch.nn.BatchNorm1d(dim)
@@ -66,7 +65,6 @@ class GIN(torch.nn.Module):
         nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
         self.conv5 = GINConv(nn5)
         self.bn5 = torch.nn.BatchNorm1d(dim)
-        """
         self.fc1 = Linear(dim, dim)
         self.fc2 = Linear(dim, dim_out) 
 
@@ -77,14 +75,12 @@ class GIN(torch.nn.Module):
         x = F.relu(self.conv2(x, edge_index))
         x = self.bn2(x)
         x = F.relu(self.conv3(x, edge_index))
-        """
         x = self.bn3(x)
-        x = F.relu(self.conv4(x, edge_index))
-        x = self.bn4(x)
-        x = F.relu(self.conv5(x, edge_index))
-        x = self.bn5(x)
+        #x = F.relu(self.conv4(x, edge_index))
+        #x = self.bn4(x)
+        #x = F.relu(self.conv5(x, edge_index))
+        #x = self.bn5(x)
         x = F.relu(self.fc1(x))
-        """
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
