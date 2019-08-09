@@ -11,7 +11,8 @@ from generator.shapes import *
 
 
 def build_structure(width_basis, basis_type, list_shapes, start=0,
-                    rdm_basis_plugins =False, add_random_edges=0,
+                    rdm_basis_plugins =False, custom_plugins=None, 
+                    add_random_edges=0,
                     plot=False, savefig=False):
     '''This function creates a basis (torus, string, or cycle)
     and attaches elements of the type in the list randomly along the basis.
@@ -37,8 +38,11 @@ def build_structure(width_basis, basis_type, list_shapes, start=0,
     n_basis, n_shapes = nx.number_of_nodes(basis), len(list_shapes)
     start += n_basis        # indicator of the id of the next node
 
+    
     # Sample (with replacement) where to attach the new motives
-    if rdm_basis_plugins is True:
+    if custom_plugins:
+        plugins = custom_plugins
+    elif rdm_basis_plugins is True:
         plugins = np.random.choice(n_basis, n_shapes, replace=False)
     else:
         spacing = math.floor(width_basis / n_shapes)
@@ -51,10 +55,12 @@ def build_structure(width_basis, basis_type, list_shapes, start=0,
     for shape_id, shape in enumerate(list_shapes):
         shape_type = shape[0]
         args = [start]
+        opt_args = {}
         if len(shape)>1:
-            args += shape[1:]
-        args += [0] # what does this do?
-        graph_s, roles_graph_s = shape_type(*args)
+            args += shape[1]
+        if len(shape)>2:
+            opt_args = shape[2]
+        graph_s, roles_graph_s = shape_type(*args, **opt_args)
         n_s = nx.number_of_nodes(graph_s)
         try:
             col_start = seen_shapes[shape_type][0]

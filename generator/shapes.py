@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import scipy as sc
+from pprint import pprint
 
 
 def barbel_graph(start, n1, n2, role_start=0, plot=False):
@@ -27,12 +28,12 @@ def barbel_graph(start, n1, n2, role_start=0, plot=False):
     '''
 
     a1 = np.ones((n1, n1))
-    np.fill_diagonal(a1, 0)         # set the diagonal to 0
+    np.fill_diagonal(a1, 0)
     graph = nx.from_numpy_matrix(a1)
     a2 = np.ones((n1, n1))
     block_zeros = np.zeros((n1, n1))
     a = np.bmat([[a1, block_zeros], [block_zeros, a2]])
-    np.fill_diagonal(a, 0)          # set the diagonal to 0
+    np.fill_diagonal(a, 0)
     graph = nx.from_numpy_matrix(a)
     start = nx.number_of_nodes(graph)
     graph.add_nodes_from(range(start, start + 2 * n2 + 1))
@@ -72,16 +73,16 @@ def clique(start, nb_nodes, nb_to_remove=0, role_start=0, plot=False):
     np.fill_diagonal(a, 0)
     graph = nx.Graph()
     graph = nx.from_numpy_matrix(a)
-    edge_list = graph.edges().keys()
+    edge_list = list(graph.edges().keys())
     roles = [role_start] * nb_nodes
     if nb_to_remove > 0:
         lst = np.random.choice(len(edge_list), nb_to_remove, replace=False)
-        print(edge_list, lst)
+        #print(edge_list, lst)
         to_delete = [edge_list[e] for e in lst]
         graph.remove_edges_from(to_delete)
         for e in lst:
-            print(edge_list[e][0])
-            print(len(roles))
+            #print(edge_list[e][0])
+            #print(len(roles))
             roles[edge_list[e][0]] += 1
             roles[edge_list[e][1]] += 1
     mapping_graph = {k: (k + start) for k in range(nb_nodes)}
