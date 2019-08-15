@@ -1,0 +1,58 @@
+[8/6/19]
+Publishability
+- Dataset too narrow; not accepted by community. Results overfit to it
+- Features not good or general enough
+	- Pretraining task needs to be somewhat independent of features
+	~ Pretraining should work for a variety of structural features -- e.g. LDP, Personalized PR, Kas's 
+- Model (MLP) is too small, simple
+
+
+[8/5/19]
+KMeans clustering
+- Results same as with no pretraining. Test tr=0.1 only.
+
+[8/1/19]
+Degree-based clustering
+- Random labels pretrain baseline: similar results to no pretraining
+- Varied # clusters as ratio of unique degrees. Clusters defined via degree percentiles
+- What cluster ratios improve performance?
+	- Brazil: 0.1, 0.2
+	- USA: all (?!)
+	- Europe: 0.05, 0.1
+- For 0.6 train ratio, performance margins are smaller. No improvement on Europe, 1-1.5% improvement on USA
+
+[7/30/19]
+LDP feature masking test - 32 combinations
+- Parameters: Train ratio = 0.6
+- TODO: evaluate results
+
+[7/29/19]
+Percentile features - initial impl.
+- Some improvement on Brazil dataset (3-4%)
+- No improvement or same on Europe, USA
+- Normalization is important; improves accuracy significantly
+
+[7/24/19]
+Pretraining + lower epoch vs. training w/lower epoch, on same graph
+- Idea is to test whether weights transfer minus classifier speeds
+	up convergence. This is trivial case, since the pretraining
+	is same as training
+- Pretrain for 200 epochs
+	- epoch=10, USA, tr=0.1: .05-.06 diff
+	- epoch=20, USA, tr=0.1: .04-.05 diff
+- Too few pretraining epochs hurts perf, too many doesn't 
+	- Tested up to 1000 pretrain epochs
+
+Pretraining on different graph: different graphs, same task
+- europe -> USA: 100 trials, tr=0.6, epochs-pre = 200, epochs = 200
+	- Pretraining: avg 0.609, Std. 0.027
+	- Baseline: avg. 0.598, std. 0.027
+	- Indistinguishable
+- europe -> USA: 100 trials, tr=0.1, epochs-pre = 200, epochs = 200
+	- Pretraining: avg 0.589, Std. 0.03
+	- Baseline: avg. 0.578, std. 0.03
+	- Results within std...
+- europe -> USA: 100 trials, tr=0.01, epochs-pre = 200, epochs = 200
+	- Pretraining: avg 0.500, Std. 0.059
+	- Baseline: avg. 0.498, std. 0.0506
+	- Indistinguishable
