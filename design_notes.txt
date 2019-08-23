@@ -1,0 +1,27 @@
+Features
+- Normalized per-feature: subtracting by mean, divide by standard dev.
+
+Model
+- MLP: # layers
+	- Dropout: not tuned; default 0.5 (API, from literature)
+		May not matter for small network like this
+
+- GIN:
+
+Train-test splits
+
+Pretraing
+- Pretraining stopping criteria? Determines when to freeze model weights
+- What fraction of pre-training labels to use?
+- Learning rate (optimizer) of pretrain vs. training
+
+Clustering-based labels
+- Potential "confounding" factors
+	- Complexity of model -- transfer learning for deeper neural net? GNN?
+	- Inherent dependency on (user-defined) features
+	- Quality of dataset: what accuracy achievable even w/"perfect" structural embeddings?
+	- Clustering method? Objective function?
+	- Number of clusters?
+- Recursively splitting data on each feature dimension
+	- Would probably work better than kmeans, but this doesn't seem generalizable to more complex (and higher-dim) feature space. Even the degree-only clustering probably "overfits" to airports dataset
+
