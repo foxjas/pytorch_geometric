@@ -1,5 +1,6 @@
 import os
 import sys
+from pprint import pprint
 
 try:
     import cPickle as pickle
@@ -65,3 +66,16 @@ def reorderLabels(old_new_ids, node_labels):
         new_labels[id_map[v]] = l
 
     return new_labels
+
+
+def compressLabels(labels):
+    """ 
+    Compresses label range to be in [0, C-1]
+    where C is the number of classes
+    """
+    unique = list(set(labels))
+    C = len(unique)
+    old_new_map = {val: key for key, val in enumerate(sorted(unique))}
+    new_labels = [old_new_map[l] for l in labels]
+    return new_labels
+
