@@ -137,7 +137,6 @@ class Structure(InMemoryDataset):
         return '{}()'.format(self.name)
 
 
-# TODO: implement version based on absolute sample counts
 def train_validation_test_split(y, samplesPerClass, nValidation, nTest):
     """
     Return indices corresponding to stratified train, validation, and
@@ -161,6 +160,10 @@ def train_validation_test_split(y, samplesPerClass, nValidation, nTest):
     np.random.shuffle(ind_rest)
     ind_valid = ind_rest[:nValidation]
     ind_test = ind_rest[nValidation:nValidation+nTest]
+   
+    print("({}, {}, {})".format(len(ind_train), len(ind_valid), len(ind_test)))
+    duplicates = set(ind_train).intersection(set(ind_valid)).intersection(set(ind_test))
+    assert not len(duplicates)
 
     return ind_train, ind_valid, ind_test
 
@@ -190,8 +193,10 @@ def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape
     shape_type = name_shape_map[shape_name]
     list_shapes = [[shape_type]] * nb_shapes
     graph,_,_,role_id = build_structure(width_basis, basis_type, list_shapes, start=0,
-                                rdm_basis_plugins =False, add_random_edges=0,
+                                rdm_basis_plugins=False, add_random_edges=0,
                                 plot=False, savefig=False)
+    print("Number of nodes in graph: {}".format(graph.number_of_nodes()))
+    print("Number of edges in graph: {}".format(graph.number_of_edges()))
     
     # Read and relabel graph. Should be deterministic.
     graph, old_new_node_ids = relabelGraph(graph) 
@@ -212,7 +217,7 @@ def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape
     node_labels = list(enumerate(role_id))
     node_labels = reorderLabels(old_new_node_ids, node_labels)
     node_labels = compressLabels(node_labels)
-    pprint(labelCounts(node_labels))
+    #pprint(labelCounts(node_labels))
     saveBinary(node_labels, data_name, "labels", folder)
 
 

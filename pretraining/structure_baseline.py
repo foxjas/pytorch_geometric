@@ -7,7 +7,7 @@ from pretraining.structure_data import Structure
 from pretraining.models import MLP2,MLP3,GIN,train_step,test_step 
 import numpy as np
 
-
+RAND_SEED = 24
 LEARNING_RATE = 0.01
 
 if __name__ == '__main__':
@@ -18,6 +18,8 @@ if __name__ == '__main__':
     parser.add_argument('feature_type', default="LDP", help='Type of features to use')
     parser.add_argument('--model', default="mlp2", help='Model type')
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
+    parser.add_argument('--layers', default=3, type=int, help='Number of convolutional layer(s)')
+    parser.add_argument('--samples_per_class', default=20, type=int, help='Training samples per class')
     parser.add_argument('--epochs', default=200, type=int, help='Number of epochs (full passes through dataset)')
     parser.add_argument('--trials', default=10, type=int, help='Number of trials to average over, for testing')
     parser.add_argument('--verbose', default=False, action='store_true', help='Print additional training information')
@@ -38,9 +40,11 @@ if __name__ == '__main__':
     # Testing over multiple test sets 
     trial_test_acc = [] 
 
-    samples_per_class = 20 
-    samples_validation = 100 
+    samples_per_class = args.samples_per_class 
+    samples_validation = 200 
     samples_test = 1000
+
+    np.random.seed(RAND_SEED)
 
     dataset = Structure(args.data_dir, args.data_name, args.feature_type, load_data=False)
     for tr in range(args.trials):
@@ -48,7 +52,7 @@ if __name__ == '__main__':
         dataset.update_data()
         data = dataset[0].to(device)
         if model_type is GIN: 
-            model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes)
+            model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes, args.layers)
         else:
             model = model_type(data.x, dataset.num_features, args.hidden_dim, dataset.num_classes)
         model = model.to(device)
