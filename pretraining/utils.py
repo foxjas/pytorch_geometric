@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 from pprint import pprint
 
 try:
@@ -79,3 +80,13 @@ def compressLabels(labels):
     new_labels = [old_new_map[l] for l in labels]
     return new_labels
 
+
+def labelCounts(labels):
+    """
+    Returns dictionary of all unique labels 
+    and corresponding counts 
+    """
+    # print total class counts
+    unique, counts = np.unique(labels, return_counts=True)
+    class_counts = dict(zip(unique, counts))
+    return class_counts

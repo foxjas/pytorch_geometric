@@ -11,9 +11,10 @@ from generator.shapes import *
 from generator.build_graph import *
 from gen_features import *
 from sklearn.model_selection import train_test_split 
+from collections import defaultdict
 from pprint import pprint
 
-class SyntheticStructure(InMemoryDataset):
+class Structure(InMemoryDataset):
     r"""The airport network datasets "europe", "brazil" and "usa" from the
     `"Learning Node Representations from Structural Identity" paper.
     Training, validation and test splits are given by binary masks.
@@ -41,13 +42,11 @@ class SyntheticStructure(InMemoryDataset):
         self.train_mask = None
         self.val_mask = None
         self.test_mask = None
-        super(SyntheticStructure, self).__init__(root)
-        #if load_data:
-        #    self.data, self.slices = torch.load(self.processed_paths[0])
-        #else:
-        #    self.process()  
-        self.read_airport_data()
-        self.set_label_split(0.6, 0.2, 0.2)
+        super(Structure, self).__init__(root)
+
+        self.read_data()
+        #self.shuffle_labels()
+        self.set_label_samples(20, 200, 1000)
         self.update_data()
            
     @property
@@ -68,25 +67,16 @@ class SyntheticStructure(InMemoryDataset):
     def process(self):
         pass
 
-    def set_label_split(self, train_ratio=0.6, validation_ratio=0.2, test_ratio=0.2): 
+    def set_label_samples(self, nTrainPerClass, nValidation, nTest): 
         """ 
-        Sets training, validation, and test masks over data based on
-        specified train and validation ratios (with respect to 
-        original data). Test ratio is inferred as 1 - train_ratio - 
-        validation_ratio. 
-
-        Does NOT check for invalid ratio combinations (e.g. sum > 1)
+        Sets number of samples per class
         """
         
         y = self.y
         #print("y: {}".format(y.size(0)))
-        if train_ratio < 1:
-            train_index, val_index, test_index = train_validation_test_split(
-                    y, train_ratio, validation_ratio, test_ratio)
-        else:
-            train_index = np.arange(len(y))
-            val_index = np.empty(0)
-            test_index = np.empty(0)
+        train_index, val_index, test_index = train_validation_test_split(y,
+                    nTrainPerClass, nValidation, nTest)
+
         self.train_mask = sample_mask(train_index, num_nodes=y.size(0))
         self.val_mask = sample_mask(val_index, num_nodes=y.size(0))
         self.test_mask = sample_mask(test_index, num_nodes=y.size(0))
@@ -94,15 +84,23 @@ class SyntheticStructure(InMemoryDataset):
     def set_labels(self, labels):
         self.y = labels
 
+    def shuffle_labels(self):
+        """
+        Randomly shuffles labels
+        """
+        y = self.y.numpy()
+        np.random.shuffle(y)
+        self.y = torch.Tensor(y).long()
+
     def set_features(self, features):
         """
         Set new features
         """
         self.x = features
 
-    def read_airport_data(self):
+    def read_data(self):
         """
-        Reads airport data binaries (edges, labels, features)
+        Reads data binaries (edges, labels, features)
             and stores as Tensors.
         """
         coo = readBinary(self.graph_bin_path)
@@ -140,7 +138,7 @@ class SyntheticStructure(InMemoryDataset):
 
 
 # TODO: implement version based on absolute sample counts
-def train_validation_test_split(y, train_ratio, valid_ratio, test_ratio):
+def train_validation_test_split(y, samplesPerClass, nValidation, nTest):
     """
     Return indices corresponding to stratified train, validation, and
     test splits.
@@ -149,37 +147,21 @@ def train_validation_test_split(y, train_ratio, valid_ratio, test_ratio):
     """
     
     y = y.numpy()
-    # print total class counts
-    unique, counts = np.unique(y, return_counts=True)
-    #class_counts = dict(zip(unique, counts))
-    #print("total class counts: {}".format(class_counts))
+    label_indices = [[] for _ in range(len(y))]
+    for i, label in enumerate(y):
+        label_indices[label].append(i)
+    
+    ind_train = []
+    ind_rest = []
+    for label, indices in enumerate(label_indices):
+        np.random.shuffle(indices)
+        ind_train += indices[:samplesPerClass]
+        ind_rest += indices[samplesPerClass:]
 
-    n = n0 = len(y)
-    indices = np.arange(n)
-    rel_ratio = train_ratio*n/n0
-    y_train, y_rest, ind_train, ind_rest = \
-            train_test_split(y, indices, test_size=1-rel_ratio, stratify=y)
-   
-    n1 = len(y_rest)
-    rel_ratio = valid_ratio*n/n1
-    y_valid, y_rest, ind_valid, ind_rest = \
-            train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
+    np.random.shuffle(ind_rest)
+    ind_valid = ind_rest[:nValidation]
+    ind_test = ind_rest[nValidation:nValidation+nTest]
 
-    n2 = len(y_rest)
-    rel_ratio = test_ratio*n/n2
-    if (1-rel_ratio)*n2 < len(unique): # can't create split with < number of classes; 
-                                       # train_test_split complains
-        y_test, ind_test = y_rest, ind_rest
-        y_rest, ind_rest = np.empty(0), np.empty(0)
-    else:
-        y_test, y_rest, ind_test, ind_rest = \
-            train_test_split(y_rest, ind_rest, test_size=1-rel_ratio, stratify=y_rest)
-
-    # checks that elements of split are unique and encompass whole set
-    ind_reconstr = list(ind_train) + list(ind_valid) + list(ind_test) + list(ind_rest)
-    assert len(set(ind_reconstr)) == len(indices)
-
-    #print("({},{},{})".format(len(ind_train), len(ind_valid), len(ind_test)))
     return ind_train, ind_valid, ind_test
 
 
@@ -230,6 +212,7 @@ def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape
     node_labels = list(enumerate(role_id))
     node_labels = reorderLabels(old_new_node_ids, node_labels)
     node_labels = compressLabels(node_labels)
+    pprint(labelCounts(node_labels))
     saveBinary(node_labels, data_name, "labels", folder)
 
 
