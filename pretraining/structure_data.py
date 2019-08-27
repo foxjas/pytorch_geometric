@@ -108,14 +108,18 @@ class Structure(InMemoryDataset):
         self.edge_index = graph_tensor.long() 
         #print("edge_index: {}".format(self.edge_index.size()))
 
-        # create features tensor
-        feats_data = np.array(readBinary(self.feats_bin_path))
-        self.x = torch.Tensor(feats_data) 
-        #print("feats_data: {}".format(self.x.size()))
-
         # process labels 
         labels_data = np.array(readBinary(self.labels_bin_path), dtype=np.uint8)
         self.y = torch.Tensor(labels_data).long()
+
+        # create features tensor
+        if self.feature_type == "constant":
+            feats_data = np.ones((self.y.shape[0], 1))
+        else:
+            feats_data = np.array(readBinary(self.feats_bin_path))
+        self.x = torch.Tensor(feats_data) 
+        #print("feats_data: {}".format(self.x.size()))
+
 
 
     def update_data(self):
@@ -182,7 +186,7 @@ name_shape_map = {
     "clique": clique
 }
 
-def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape_name):
+def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape_name, random_ratio=0):
     """
     Generates graph, labels, and features vectors.
     Saves each to binary. 
@@ -193,7 +197,7 @@ def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape
     shape_type = name_shape_map[shape_name]
     list_shapes = [[shape_type]] * nb_shapes
     graph,_,_,role_id = build_structure(width_basis, basis_type, list_shapes, start=0,
-                                rdm_basis_plugins=False, add_random_edges=0,
+                                rdm_basis_plugins=False, add_random_edges_ratio=random_ratio,
                                 plot=False, savefig=False)
     print("Number of nodes in graph: {}".format(graph.number_of_nodes()))
     print("Number of edges in graph: {}".format(graph.number_of_edges()))
@@ -201,16 +205,19 @@ def prepare_data(folder, width_basis, nb_shapes, feature_type, basis_name, shape
     # Read and relabel graph. Should be deterministic.
     graph, old_new_node_ids = relabelGraph(graph) 
     coo = graphToCOO(graph) 
-    data_name = "{}_{}_{}_{}".format(basis_name, width_basis, shape_name, nb_shapes)
+    data_name = "{}_{}_{}_{}_{}".format(basis_name, width_basis, shape_name, nb_shapes, random_ratio)
     saveBinary(coo, data_name, "edges", folder) 
 
     # Generate features. Depends only on graph
+    feats_data = None
     if feature_type == "LDP":
        feats_data = ldp_features(graph)
     elif feature_type == "degree":
        feats_data = degreeOnlyFeatures(graph) 
-    base_name = data_name + "-{}".format(feature_type)
-    saveBinary(feats_data, base_name, "feats", folder)
+    
+    if feats_data is not None:
+        base_name = data_name + "-{}".format(feature_type)
+        saveBinary(feats_data, base_name, "feats", folder)
 
     # Match labels to graph IDs. Depends only on graph
     labels_path = os.path.join(folder, "labels-{}.txt".format(data_name))
@@ -230,8 +237,9 @@ if __name__ == '__main__':
     parser.add_argument('--feature_type', default="degree", help='Type of features to use')
     parser.add_argument('--basis_name', default='cycle', help='Name of base structure')
     parser.add_argument('--shape_name', default='house', help='Name of shapes to attach to base')
+    parser.add_argument('--random_ratio', type=float, default=0, help='Add random edges to structure, as ratio of original number of edges')
     args = parser.parse_args()
 
-    prepare_data(args.data_dir, args.basis_width, args.num_shapes, args.feature_type, args.basis_name, args.shape_name)
+    prepare_data(args.data_dir, args.basis_width, args.num_shapes, args.feature_type, args.basis_name, args.shape_name, args.random_ratio)
 
 

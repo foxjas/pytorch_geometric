@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     parser.add_argument('data_dir', help='Data directory')
     parser.add_argument('data_name', help='Dataset name')
-    parser.add_argument('feature_type', default="LDP", help='Type of features to use')
+    parser.add_argument('feature_type', default="degree", help='Type of features to use')
     parser.add_argument('--model', default="mlp2", help='Model type')
     parser.add_argument('--hidden_dim', default=32, type=int, help='Dimension of hidden layer(s)')
     parser.add_argument('--layers', default=3, type=int, help='Number of convolutional layer(s)')
@@ -41,16 +41,16 @@ if __name__ == '__main__':
     trial_test_acc = [] 
 
     samples_per_class = args.samples_per_class 
-    samples_validation = 200 
+    samples_validation = 200
     samples_test = 1000
 
     np.random.seed(RAND_SEED)
 
     dataset = Structure(args.data_dir, args.data_name, args.feature_type, load_data=False)
+    dataset.set_label_samples(samples_per_class, samples_validation, samples_test)
+    dataset.update_data()
+    data = dataset[0].to(device)
     for tr in range(args.trials):
-        dataset.set_label_samples(samples_per_class, samples_validation, samples_test)
-        dataset.update_data()
-        data = dataset[0].to(device)
         if model_type is GIN: 
             model = model_type(data.x, data.edge_index, dataset.num_features, args.hidden_dim, dataset.num_classes, args.layers)
         else:

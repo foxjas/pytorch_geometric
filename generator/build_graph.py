@@ -12,7 +12,7 @@ from generator.shapes import *
 
 def build_structure(width_basis, basis_type, list_shapes, start=0,
                     rdm_basis_plugins =False, custom_plugins=None, 
-                    add_random_edges=0,
+                    add_random_edges_ratio=0,
                     plot=False, savefig=False):
     '''This function creates a basis (torus, string, or cycle)
     and attaches elements of the type in the list randomly along the basis.
@@ -27,7 +27,7 @@ def build_structure(width_basis, basis_type, list_shapes, start=0,
     start            :      initial nb for the first node
     rdm_basis_plugins:      boolean. Should the shapes be randomly placed
                             along the basis (True) or regularly (False)?
-    add_random_edges :      nb of edges to randomly add on the structure
+    add_random_edges_ratio : edges to randomly add on the structure, as ratio of original edges
     plot,savefig     :      plotting and saving parameters
     OUTPUT:
     --------------------------------------------------------------------------------------
@@ -81,13 +81,18 @@ def build_structure(width_basis, basis_type, list_shapes, start=0,
         role_id += temp_labels
         start += n_s
 
+    nEdges = basis.number_of_edges()
+    print("Number of edges before: {}".format(nEdges))
+    add_random_edges = int(np.ceil(add_random_edges_ratio*nEdges))
+    print("Number of random edges to add: {}".format(add_random_edges))
     if add_random_edges > 0:
         # add random edges between nodes:
         for p in range(add_random_edges):
             src, dest = np.random.choice(nx.number_of_nodes(basis),
                                          2, replace=False)
-            print((src, dest))
             basis.add_edges_from([(src, dest)])
+
+    print("Number of edges after: {}".format(basis.number_of_edges()))
 
     if plot is True: plot_networkx(basis, role_id)
 
