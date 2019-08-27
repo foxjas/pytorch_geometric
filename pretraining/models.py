@@ -60,8 +60,8 @@ class GIN(torch.nn.Module):
             self.model["conv{}".format(l)] = conv
             bn = torch.nn.BatchNorm1d(dim)
             self.model["bn{}".format(l)] = bn
-        self.fc1 = Linear(dim, dim)
-        self.fc2 = Linear(dim, dim_out) 
+        self.fc1_out = Linear(dim, dim)
+        self.fc2_out = Linear(dim, dim_out) 
 
     def forward(self):
         edge_index = self.edge_index
@@ -70,9 +70,9 @@ class GIN(torch.nn.Module):
             x = F.relu(self.model["conv{}".format(l)](x, edge_index))
             x = self.model["bn{}".format(l)](x)
 
-        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc1_out(x))
         x = F.dropout(x, p=0.5, training=self.training)
-        x = self.fc2(x)
+        x = self.fc2_out(x)
         return F.log_softmax(x, dim=-1)
 
 
