@@ -8,7 +8,6 @@ from pretraining.models import MLP2,MLP3,GIN,train_step,test_step
 import numpy as np
 
 RAND_SEED = 24
-LEARNING_RATE = 0.01
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Runs baseline experiments')

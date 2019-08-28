@@ -19,29 +19,45 @@ def initParamsFromModel(model_source, model_target):
     """
     target_dict = model_target.state_dict()
     #pprint("target_dict before: {}".format(target_dict))
-    #pprint("before: {}".format(target_dict['model.conv1.nn.0.weight']))
+    #for key, val in target_dict.items():
+    #    print(key)
     source_dict = model_source.state_dict()
     source_dict = {k: v for k,v in source_dict.items() if '_out' not in k}  
-    #pprint("source_dict: {}".format(source_dict))
     #source_dict = {k: v for k,v in source_dict.items()}  
+    #pprint("source_dict: {}".format(source_dict))
     target_dict.update(source_dict)
     model_target.load_state_dict(target_dict)
     #pprint("after: {}".format(model_target.state_dict()))
-    #pprint("after: {}".format(model_target.state_dict()['model.conv1.nn.0.weight']))
+
+def setParamTrainableByCond(model, cond_fn, trainable=True):
+    for name, param in model.named_parameters():
+        #print("{}: {}".format(name, param.requires_grad))
+        if cond_fn(name):
+            #print("name {} passes condition".format(name))
+            param.requires_grad = False
 
 def pretrain(model, data, epochs=200, verbose=False):
-    """
-    Stopping criteria?
-    """
+
+    model_param_path = "model_tmp.pt"
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE_PRE, weight_decay=5e-4)
+    best_val_acc = 0
+    print("Pretraining: ")
     for epoch in range(epochs):
         train_step(model, data, optimizer)
-        train_acc = train_accuracy(model, data)
-        log = 'Epoch: {:03d}, Train: {:.4f}'
-        if verbose:
-            print(log.format(epoch+1, train_acc))
+        train_acc, val_acc, tmp_test_acc = test_step(model, data)
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            test_acc = tmp_test_acc
+            if args.verbose:
+                log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+                print(log.format(epoch+1, train_acc, best_val_acc, test_acc))
+            torch.save(model.state_dict(), model_param_path)
+        #train_acc = train_accuracy(model, data)
+        #log = 'Epoch: {:03d}, Train: {:.4f}'
     if verbose:
         print("-----------------------------------------------------")
+
+    model.load_state_dict(torch.load(model_param_path))
 
 def train_accuracy(model, data):
     """
@@ -83,7 +99,7 @@ if __name__ == '__main__':
         model_type = GIN
 
     dataset_pre = Structure(args.data_dir, args.data_name_pre, args.feature_type) 
-    dataset_pre.set_label_samples(20, 0, 0)
+    dataset_pre.set_label_samples(200, 200, 1000)
     dataset_pre.update_data()
     data_pre = dataset_pre[0].to(device)
     if model_type is GIN: 
@@ -109,6 +125,8 @@ if __name__ == '__main__':
             model = model_type(data.x, dataset.num_features, args.hidden_dim, dataset.num_classes)
         model = model.to(device)
         initParamsFromModel(model_pre, model)
+        setParamTrainableByCond(model, lambda x: "conv" in x, trainable=False)
+        #setParamTrainableByCond(model, lambda x: True, trainable=False)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
         best_val_acc = test_acc = 0
