@@ -1,18 +1,20 @@
+import os
 import os.path
 import sys
 sys.path = [os.path.expanduser("~/pytorch_geometric")] + sys.path
 import argparse
 import torch
-from structure_data import Structure 
-from structure_baseline import RAND_SEED
+from structure_data import Structure, RAND_SEED
 from models import train_step, test_step, MLP2, MLP3, GIN
 import numpy as np
 from pprint import pprint
 
 LEARNING_RATE_PRE = 0.01
 LEARNING_RATE = 0.01
+np.random.seed(RAND_SEED)
+torch.manual_seed(RAND_SEED)
 
-def initParamsFromModel(model_source, model_target):
+def initParamsFromModel(model_source, model_target, cond_fn):
     """
     Initializes parameters of new model with weights of saved model,
         except linear layer corresponding to output
@@ -22,8 +24,7 @@ def initParamsFromModel(model_source, model_target):
     #for key, val in target_dict.items():
     #    print(key)
     source_dict = model_source.state_dict()
-    source_dict = {k: v for k,v in source_dict.items() if '_out' not in k}  
-    #source_dict = {k: v for k,v in source_dict.items()}  
+    source_dict = {k: v for k,v in source_dict.items() if cond_fn(k)}  
     #pprint("source_dict: {}".format(source_dict))
     target_dict.update(source_dict)
     model_target.load_state_dict(target_dict)
@@ -31,10 +32,8 @@ def initParamsFromModel(model_source, model_target):
 
 def setParamTrainableByCond(model, cond_fn, trainable=True):
     for name, param in model.named_parameters():
-        #print("{}: {}".format(name, param.requires_grad))
         if cond_fn(name):
-            #print("name {} passes condition".format(name))
-            param.requires_grad = False
+            param.requires_grad = trainable
 
 def pretrain(model, data, epochs=200, verbose=False):
 
@@ -57,7 +56,9 @@ def pretrain(model, data, epochs=200, verbose=False):
     if verbose:
         print("-----------------------------------------------------")
 
-    model.load_state_dict(torch.load(model_param_path))
+    missing_keys, unexpected_keys = model.load_state_dict(torch.load(model_param_path))
+    assert not len(missing_keys) and not len(unexpected_keys)
+    os.remove(model_param_path)
 
 def train_accuracy(model, data):
     """
@@ -124,8 +125,11 @@ if __name__ == '__main__':
         else:
             model = model_type(data.x, dataset.num_features, args.hidden_dim, dataset.num_classes)
         model = model.to(device)
-        initParamsFromModel(model_pre, model)
+        initParamsFromModel(model_pre, model, lambda x: "_out" not in x)
+        #initParamsFromModel(model_pre, model, lambda x: "_out" not in x and "bn" not in x)
+
         setParamTrainableByCond(model, lambda x: "conv" in x, trainable=False)
+        #setParamTrainableByCond(model, lambda x: "conv" in x or "bn" in x, trainable=False)
         #setParamTrainableByCond(model, lambda x: True, trainable=False)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
@@ -141,6 +145,7 @@ if __name__ == '__main__':
                     print(log.format(epoch+1, train_acc, best_val_acc, test_acc))
         if args.verbose:
             print("-----------------------------------------------------")
+
         trial_test_acc.append(test_acc)
 
     # Report average test accuracy, standard deviation

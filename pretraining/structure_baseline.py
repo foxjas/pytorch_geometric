@@ -3,11 +3,12 @@ import sys
 sys.path = [os.path.expanduser("~/pytorch_geometric")] + sys.path
 import argparse
 import torch
-from pretraining.structure_data import Structure
+from pretraining.structure_data import Structure, RAND_SEED
 from pretraining.models import MLP2,MLP3,GIN,train_step,test_step 
 import numpy as np
 
-RAND_SEED = 24
+np.random.seed(RAND_SEED)
+torch.manual_seed(RAND_SEED)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Runs baseline experiments')

@@ -14,6 +14,8 @@ from sklearn.model_selection import train_test_split
 from collections import defaultdict
 from pprint import pprint
 
+RAND_SEED = 24
+
 class Structure(InMemoryDataset):
     r"""The airport network datasets "europe", "brazil" and "usa" from the
     `"Learning Node Representations from Structural Identity" paper.
@@ -145,8 +147,6 @@ def train_validation_test_split(y, samplesPerClass, nValidation, nTest):
     """
     Return indices corresponding to stratified train, validation, and
     test splits.
-    Note: no random seed is set, so splits may differ on different calls
-        to this function for the same data.
     """
     
     y = y.numpy()
@@ -165,7 +165,7 @@ def train_validation_test_split(y, samplesPerClass, nValidation, nTest):
     ind_valid = ind_rest[:nValidation]
     ind_test = ind_rest[nValidation:nValidation+nTest]
    
-    print("({}, {}, {})".format(len(ind_train), len(ind_valid), len(ind_test)))
+    #print("({}, {}, {})".format(len(ind_train), len(ind_valid), len(ind_test)))
     duplicates = set(ind_train).intersection(set(ind_valid)).intersection(set(ind_test))
     assert not len(duplicates)
 
