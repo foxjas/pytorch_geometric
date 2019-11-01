@@ -1,7 +1,7 @@
-Features
+[Features]
 - Normalized per-feature: subtracting by mean, divide by standard dev.
 
-Model
+[Model]
 - MLP: # layers
 	- Dropout: not tuned; default 0.5 (API, from literature)
 		May not matter for small network like this
@@ -10,7 +10,7 @@ Model
 
 Train-test splits
 
-Pretraing
+[Pretraining]
 - Pretraining stopping criteria? Determines when to freeze model weights
 - What fraction of pre-training labels to use?
 - Learning rate (optimizer) of pretrain vs. training

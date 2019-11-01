@@ -1,3 +1,50 @@
+[8/29/19]
+- Sanity check [0.1], 200 samples per class training
+	- Baseline: 0.84-0.85
+	- Fine-tune [unfreeze all, 20 samples-per]: 0.80
+	- Fine-tune [unfreeze bn, output layers, 20]: 0.84
+	- Fine-tune [unfreeze output]: 0.84
+	- Fine-tune [unfreeze bn, output layers; bn random init.]: 0.80
+- Adam optimizer hyperparams: 5e-3 to 5e-5 all reasonable for lr=0.01, 0.001. Even 0 weight decay is not terrible. Tested on baseline.
+
+- Transfer learning [0.1]
+	- Baseline: 0.78
+	- [unfreeze all]: 0.78
+	- [unfreeze bn, output layers, 20]: 0.76
+	- [unfreeze output]: 0.72
+ 	- [unfreeze bn, output layers; bn random init.]: 0.7, w/0.04 std
+
+- Transfer learning [0.2]
+	- Baseline: 0.57
+	- [unfreeze all]: 0.61
+	- [unfreeze bn, output layers]: 0.64 (!?)
+	- [unfreeze output]: 0.55
+
+[8/28/19]
+- Batchnorm, 0.1: (0.78, 0.015)
+  No batchnorm, 0.1: (0.73, 0.03)
+  Batchnorm, no dropout: (0.77, 0.018)
+- Sanity check: pretrain on same graph and labels [0.1]
+	- 0.826 for pretraining w/200 samples-per, 0.851 w/o
+
+[8/27/19]
+- 3:1 ring-house graph: 1 iteration of WL, with degree as feature, is sufficient to recover structural labels [TODO: verify]
+	- Why are 3 GIN layers needed?
+
+[8/26/19]
+Baseline for GNN trained on regular structure graph
+- 999_333
+	- 3 layers: 100% accuracy for even 1 training label per class
+	- Accuracy is less when it's > 3 layers (?!)
+
+- Constant value=1 as feature: accuracy plateaus around 0.5 (?!), for various settings
+- 10% noise: using 1 vs. 10 labels makes big difference in performance
+
+
+[8/23/19]
+- GraphWave: edge addition is random over entire graph; labels not updated. Edge deletion is limited to the clique shape; labels of edge nodes update.
+
+
 [8/6/19]
 Publishability
 - Dataset too narrow; not accepted by community. Results overfit to it
